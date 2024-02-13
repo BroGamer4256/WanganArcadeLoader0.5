@@ -94,7 +94,6 @@ unsafe fn load_al_func(func: &str) {
 	if func_ptr.is_null() {
 		panic!("{func} not found in main");
 	}
-	dbg!(func);
 	assert_ne!(func_ptr, real_func);
 
 	let real_func = real_func as usize;
