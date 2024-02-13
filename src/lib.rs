@@ -89,6 +89,6 @@ unsafe fn init() {
 	hook::hook_symbol("_ZN18clSeqBootNetThread3runEPv", adachi as *const ());
 	adm::init();
 	jamma::init();
-	al::init();
+	al::load_al_funcs();
 	hook_cl_main();
 }
