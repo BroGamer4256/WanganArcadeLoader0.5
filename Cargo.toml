@@ -1,0 +1,21 @@
+[package]
+name = "wal_3dxp"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ctor = "0.2"
+device_query = "2.0"
+glfw = "0.54"
+libc = "0.2"
+region = "3.0"
+
+[profile.release]
+lto = true
+panic = 'abort'
+strip = true
+codegen-units = 1
+incremental = true
