@@ -2,6 +2,7 @@ use libc::*;
 use std::ffi::{CStr, CString};
 
 pub mod adm;
+pub mod al;
 pub mod gl;
 pub mod hook;
 pub mod jamma;
@@ -88,5 +89,6 @@ unsafe fn init() {
 	hook::hook_symbol("_ZN18clSeqBootNetThread3runEPv", adachi as *const ());
 	adm::init();
 	jamma::init();
+	al::init();
 	hook_cl_main();
 }
