@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::sync::Mutex;
 
 use crate::*;
 const INIT: u8 = 0x10;
@@ -10,7 +11,7 @@ const PRINTSETTING: u8 = 0x78;
 const READ: u8 = 0x33;
 const WRITE: u8 = 0x53;
 
-pub static mut CARD_DATA: Vec<u8> = Vec::new();
+pub static mut CARD_DATA: Mutex<Vec<u8>> = Mutex::new(Vec::new());
 
 // +0x06: Status
 unsafe extern "C" fn exec(card_printer: *mut u32) {
@@ -44,10 +45,11 @@ unsafe extern "C" fn exec(card_printer: *mut u32) {
 			}
 		}
 		READ => {
+			// Just assume it always reads all 3 tracks
 			card_printer.write(0x00);
 			card_printer.byte_add(0x04).write(0x31);
 			if data[0] == 0x32 {
-				if CARD_DATA.len() == 0 {
+				if CARD_DATA.lock().unwrap().len() == 0 {
 					card_printer.byte_add(0x04).write(0x30);
 					card_printer.byte_add(0x06).write(0x34);
 				}
@@ -58,23 +60,39 @@ unsafe extern "C" fn exec(card_printer: *mut u32) {
 			write_buf.byte_add(0x04).write(0x33);
 			write_buf.byte_add(0x05).write(0x30);
 			write_buf.byte_add(0x06).write(0x30);
-			for (i, data) in CARD_DATA.iter().enumerate() {
+			for (i, data) in CARD_DATA.get_mut().unwrap().iter().enumerate() {
 				write_buf.byte_add(i + 0x06).write(*data);
 			}
 		}
 		WRITE => {
 			card_printer.write(0x00);
-			CARD_DATA.clear();
-			let data = data.iter().skip(3).map(|data| *data).collect::<Vec<_>>();
-			for data in data.iter() {
-				CARD_DATA.push(*data);
+			if data[2] == 0x30 {
+				// track 1
+				for (i, data) in data.iter().skip(3).enumerate() {
+					CARD_DATA.get_mut().unwrap()[i] = *data;
+				}
+			} else if data[2] == 0x35 {
+				// track 23
+				for (i, data) in data.iter().skip(3).enumerate() {
+					CARD_DATA.get_mut().unwrap()[i + 0x45] = *data;
+				}
+			} else if data[2] == 0x36 {
+				// track 123
+				let card_data = CARD_DATA.get_mut().unwrap();
+				card_data.clear();
+				for data in data.iter().skip(3) {
+					card_data.push(*data);
+				}
+			} else {
+				panic!("Unknown track combination {}", data[2]);
 			}
+			let data = data.iter().skip(3).map(|data| *data).collect::<Vec<_>>();
 			let mut file = std::fs::File::create("card.bin").unwrap();
 			file.write(&data).unwrap();
 		}
 		CANCEL => card_printer.write(0x00),
 		EJECT => {
-			CARD_DATA.clear();
+			CARD_DATA.get_mut().unwrap().clear();
 			card_printer.write(0x00);
 		}
 		PRINTSETTING => card_printer.write(0x00),
