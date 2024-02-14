@@ -54,16 +54,17 @@ pub extern "C" fn adachi() -> c_int {
 unsafe extern "C" fn system(command: *const c_char) -> c_int {
 	let cstr = CStr::from_ptr(command);
 	let str = cstr.to_str().unwrap();
-	dbg!(str);
-	if str.starts_with("perl") {
-		if str.ends_with("/tmp/ifconfig.txt") {
-			0
-		} else {
-			0
-		}
-	} else {
+	if str.starts_with("find") {
+		let command = str.replace("/tmp/data/", "./tmp/data/");
+		let command = CString::new(command).unwrap();
+
 		let system = CString::new("system").unwrap();
-		let _original = dlsym(RTLD_NEXT, system.as_ptr());
+		let system = dlsym(RTLD_NEXT, system.as_ptr());
+		let system: extern "C" fn(*const c_char) -> c_int = transmute(system);
+
+		system(command.as_ptr())
+	} else {
+		dbg!(str);
 		0
 	}
 }
@@ -78,6 +79,32 @@ unsafe extern "C" fn fopen(filename: *const c_char, mode: *const c_char) -> *con
 	let fopen = dlsym(RTLD_NEXT, fopen.as_ptr());
 	let fopen: extern "C" fn(*const c_char, *const c_char) -> *const () = transmute(fopen);
 	fopen(filename.as_ptr(), mode)
+}
+
+#[no_mangle]
+unsafe extern "C" fn _ZNSt13basic_filebufIcSt11char_traitsIcEE4openEPKcSt13_Ios_Openmode(
+	_test: c_int,
+	filename: *const c_char,
+	mode: c_int,
+) -> *const () {
+	if let Ok(filename) = CStr::from_ptr(filename).to_str() {
+		let filename = filename.replace("/tmp/", "./tmp/");
+		let filename = CString::new(filename).unwrap();
+
+		let open =
+			CString::new("_ZNSt13basic_filebufIcSt11char_traitsIcEE4openEPKcSt13_Ios_Openmode")
+				.unwrap();
+		let open = dlsym(RTLD_NEXT, open.as_ptr());
+		let open: extern "C" fn(c_int, *const c_char, c_int) -> *const () = transmute(open);
+		open(_test, filename.as_ptr(), mode)
+	} else {
+		let open =
+			CString::new("_ZNSt13basic_filebufIcSt11char_traitsIcEE4openEPKcSt13_Ios_Openmode")
+				.unwrap();
+		let open = dlsym(RTLD_NEXT, open.as_ptr());
+		let open: extern "C" fn(c_int, *const c_char, c_int) -> *const () = transmute(open);
+		open(_test, filename, mode)
+	}
 }
 
 // Redirect clLog to std::cout
