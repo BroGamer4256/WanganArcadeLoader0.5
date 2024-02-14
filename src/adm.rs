@@ -102,6 +102,9 @@ unsafe extern "C" fn adm_context() -> *const AdmGraphicsContext {
 	Box::leak(adm)
 }
 
+static mut WIDTH: u32 = 640;
+static mut HEIGHT: u32 = 480;
+
 unsafe extern "C" fn adm_window(device: *mut AdmDevice) -> *const AdmWindow {
 	let device = device.as_mut().unwrap();
 	let monitor = Monitor::from_primary();
@@ -117,7 +120,7 @@ unsafe extern "C" fn adm_window(device: *mut AdmDevice) -> *const AdmWindow {
 	device.glfw.window_hint(WindowHint::Resizable(false)); // Force floating on tiling window managers
 	let (mut window, _) = device
 		.glfw
-		.create_window(640, 480, "WanganArcadeLoader", window_mode)
+		.create_window(WIDTH, HEIGHT, "WanganArcadeLoader", window_mode)
 		.unwrap();
 	WINDOW_HANDLE = Some(window.get_x11_window());
 	window.make_current();
@@ -142,8 +145,22 @@ unsafe extern "C" fn adm_swap_buffers(window: *mut AdmWindow) -> c_int {
 	0
 }
 
+unsafe extern "C" fn adm_setup() -> c_int {
+	std::arch::asm!(
+		"push ebp",
+		"mov ebp, [esp + 0xDC]",
+		"mov {width:e}, [ebp - 0x14]",
+		"mov {height:e}, [ebp - 0x18]",
+		"pop ebp",
+		width = out(reg) WIDTH,
+		height = out(reg) HEIGHT,
+	);
+
+	1
+}
+
 pub unsafe fn init() {
-	hook::hook_symbol("admvt_setup", adachi as *const ());
+	hook::hook_symbol("admvt_setup", adm_setup as *const ());
 	hook::hook_symbol("admShutdown", adachi as *const ());
 	hook::hook_symbol("admGetString", adm_version as *const ());
 	hook::hook_symbol("admGetNumDevices", adachi as *const ());
