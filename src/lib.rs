@@ -5,6 +5,7 @@ use std::mem::transmute;
 
 pub mod adm;
 pub mod al;
+pub mod card;
 pub mod gl;
 pub mod hook;
 pub mod jamma;
@@ -14,6 +15,7 @@ pub mod poll;
 pub struct Config {
 	fullscreen: bool,
 	input_emu: bool,
+	card_emu: bool,
 	deadzone: f32,
 }
 
@@ -21,6 +23,7 @@ pub struct KeyConfig {
 	test: KeyBindings,
 	service: KeyBindings,
 	quit: KeyBindings,
+	card_insert: KeyBindings,
 
 	gear_next: KeyBindings,
 	gear_previous: KeyBindings,
@@ -145,6 +148,7 @@ unsafe fn init() {
 		test: Vec<String>,
 		service: Vec<String>,
 		quit: Vec<String>,
+		card_insert: Vec<String>,
 
 		gear_next: Vec<String>,
 		gear_previous: Vec<String>,
@@ -170,6 +174,7 @@ unsafe fn init() {
 		test: parse_keybinding(keyconfig.test),
 		service: parse_keybinding(keyconfig.service),
 		quit: parse_keybinding(keyconfig.quit),
+		card_insert: parse_keybinding(keyconfig.card_insert),
 
 		gear_next: parse_keybinding(keyconfig.gear_next),
 		gear_previous: parse_keybinding(keyconfig.gear_previous),
@@ -194,7 +199,18 @@ unsafe fn init() {
 	hook::hook_symbol("_ZNK7clHasp2cvbEv", adachi as *const ());
 	hook::hook_symbol("_ZN18clSeqBootNetThread3runEPv", adachi as *const ());
 	adm::init();
-	jamma::init();
 	al::load_al_funcs();
 	hook_cl_main();
+
+	if let Some(config) = &CONFIG {
+		if config.input_emu {
+			jamma::init();
+		}
+		if config.card_emu {
+			card::init();
+		}
+	} else {
+		jamma::init();
+		card::init();
+	}
 }

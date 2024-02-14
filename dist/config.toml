@@ -1,4 +1,5 @@
 fullscreen = false
 input_emu = true
+card_emu = true
 # 1% deadzone
 deadzone = 0.01

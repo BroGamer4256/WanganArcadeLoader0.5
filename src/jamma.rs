@@ -37,6 +37,14 @@ unsafe extern "C" fn handle_inputs(data: *mut u32) {
 	let keyconfig = KEYCONFIG.as_ref().unwrap();
 	sdl.update();
 
+	if sdl.is_tapped(&keyconfig.card_insert) {
+		if let Ok(card_data) = std::fs::read("card.bin") {
+			card::CARD_DATA.extend(card_data);
+		} else {
+			println!("Cannot open card.bin");
+		}
+	}
+
 	data.byte_add(0x24).write(0);
 
 	let mut bits = 0_u32;
@@ -111,11 +119,6 @@ unsafe extern "C" fn handle_inputs(data: *mut u32) {
 }
 
 pub unsafe fn init() {
-	if let Some(config) = &CONFIG {
-		if !config.input_emu {
-			return;
-		}
-	}
 	hook::hook_symbol("_ZN10clSystemN24initEb", adachi as *const ());
 	hook::hook_symbol("_ZN10clSystemN212initSystemN2Ev", adachi as *const ());
 	hook::hook_symbol("_ZN18clInputDeviceJamma8checkUseEv", adachi as *const ());

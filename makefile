@@ -1,5 +1,5 @@
 all:
-	@cargo b --release --target i686-unknown-linux-gnu
+	@PKG_CONFIG_SYSROOT_DIR=/usr/lib32/pkgconfig/ cargo b --release --target i686-unknown-linux-gnu
 
 dist-no-7z: all
 	@mkdir -p out/
