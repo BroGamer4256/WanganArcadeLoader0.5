@@ -4,7 +4,7 @@ Ver = 0
 -- GAME OPTION
 PcbId = 0
 TotalMachine = 0
-CardRW = 2
+CardRW = 0
 SteeringPower = 0
 WinsAndRemains = 1
 NormalWinsAndRemains = 1
