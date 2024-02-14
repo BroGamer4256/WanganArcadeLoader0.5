@@ -10,6 +10,8 @@ extern "C" fn adm_version() -> *const c_char {
 	ptr
 }
 
+pub static mut WINDOW_HANDLE: Option<*mut c_void> = None;
+
 #[repr(C)]
 struct AdmDevice {
 	ident: [u8; 4], // DEVI
@@ -29,21 +31,6 @@ struct AdmChooseMode {
 	width: u32,
 	height: u32,
 	refresh: u32,
-	unk_0x24: u32,
-	unk_0x28: u32,
-	unk_0x2C: u32,
-	unk_0x30: u32,
-	unk_0x34: u32,
-	unk_0x38: u32,
-	unk_0x3C: u32,
-	unk_0x40: u32,
-	unk_0x44: u32,
-	unk_0x48: u32,
-	unk_0x4C: u32,
-	unk_0x50: u32,
-	unk_0x54: u32,
-	unk_0x58: u32,
-	unk_0x5C: u32,
 }
 
 #[repr(C)]
@@ -117,11 +104,24 @@ unsafe extern "C" fn adm_context() -> *const AdmGraphicsContext {
 
 unsafe extern "C" fn adm_window(device: *mut AdmDevice) -> *const AdmWindow {
 	let device = device.as_mut().unwrap();
+	let monitor = Monitor::from_primary();
+	let window_mode = if let Some(config) = &CONFIG {
+		if config.fullscreen {
+			WindowMode::FullScreen(&monitor)
+		} else {
+			WindowMode::Windowed
+		}
+	} else {
+		WindowMode::Windowed
+	};
+	device.glfw.window_hint(WindowHint::Resizable(false)); // Force floating on tiling window managers
 	let (mut window, _) = device
 		.glfw
-		.create_window(640, 480, "WanganArcadeLoader", WindowMode::Windowed)
+		.create_window(640, 480, "WanganArcadeLoader", window_mode)
 		.unwrap();
+	WINDOW_HANDLE = Some(window.get_x11_window());
 	window.make_current();
+	window.set_resizable(true);
 	device.glfw.set_swap_interval(SwapInterval::Sync(1));
 	let adm = AdmWindow {
 		ident: [b'W', b'N', b'D', b'W'],
