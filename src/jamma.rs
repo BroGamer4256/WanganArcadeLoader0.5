@@ -132,7 +132,7 @@ pub unsafe fn init() {
 		adachi as *const (),
 	);
 	hook::hook_symbol(
-		"_ZN16clInputDevicePad13joyButtonDownEPN3Gap7Display12igControllerENS2_7BUTTONSE",
+		"_ZN16clInputDevicePad17joyButtonPressureEPN3Gap7Display12igControllerENS2_7BUTTONSEf",
 		adachi as *const (),
 	);
 	hook::hook_symbol(

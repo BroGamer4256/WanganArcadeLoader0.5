@@ -158,7 +158,6 @@ unsafe extern "C" fn adm_setup() -> c_int {
 
 	1
 }
-
 pub unsafe fn init() {
 	hook::hook_symbol("admvt_setup", adm_setup as *const ());
 	hook::hook_symbol("admShutdown", adachi as *const ());
@@ -178,4 +177,5 @@ pub unsafe fn init() {
 	hook::hook_symbol("admGetDeviceAttribi", adachi as *const ());
 	hook::hook_symbol("admSwapBuffers", adm_swap_buffers as *const ());
 	hook::hook_symbol("admSetMonitorGamma", adachi as *const ());
+	hook::hook_symbol("_ZN15clSpriteManagerD1Ev", adachi as *const ());
 }
