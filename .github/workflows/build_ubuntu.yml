@@ -1,0 +1,54 @@
+name: Build (Ubuntu)
+on:
+  workflow_dispatch:
+  push:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build
+      run: |
+        # make it so we can download 32 bit libs 
+        sudo dpkg --add-architecture i386
+
+        # update package list
+        sudo apt-get update
+
+        # install dependecies
+        sudo apt-get install -y build-essential gcc-multilib g++-multilib
+        sudo apt-get install -y libsdl2-dev:i386 libdbus-1-dev:i386 libdecor-0-dev:i386
+
+        # fix includes
+        sudo cp -r /usr/include/dbus-1.0/dbus /usr/include/dbus
+        sudo cp /usr/lib/i386-linux-gnu/dbus-1.0/include/dbus/dbus-arch-deps.h /usr/include/dbus
+        sudo cp /usr/include/libdecor-0/libdecor.h /usr/include
+        sudo cp /usr/include/drm/* /usr/include
+        sudo cp /usr/include/ibus-1.0/* /usr/include
+        sudo cp -r /usr/include/glib-2.0/* /usr/include
+        sudo cp /usr/lib/i386-linux-gnu/glib-2.0/include/glibconfig.h /usr/include
+
+        # setup rust
+        curl https://sh.rustup.rs -sSf | sh -s -- -y
+
+        # add 32bit target to rust
+        rustup target add i686-unknown-linux-gnu
+        
+        # fixes pkgconfig cross compile error
+        export PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig/
+        export PKG_CONFIG_SYSROOT_DIR=/usr/lib/i386-linux-gnu/pkgconfig/
+
+        # build
+        cargo build --release --target i686-unknown-linux-gnu
+
+        mkdir -p out/
+        cp target/i686-unknown-linux-gnu/release/libwal_3dxp.so out/
+        cp -r dist/* out/
+        cd out
+        7z a -t7z ../dist.7z .
+        cd ..
+        rm -rf out
+    - uses: actions/upload-artifact@v4
+      with:
+        name: dist.7z
+        path: dist.7z
