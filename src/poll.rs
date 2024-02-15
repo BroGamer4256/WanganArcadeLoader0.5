@@ -251,35 +251,21 @@ impl PollState {
 				} => {
 					let value = value as f32 / i16::MAX as f32;
 					use Axis::*;
+					let (axis_positive, axis_negative) = match axis {
+						controller::Axis::LeftX => (LeftStickRight, LeftStickLeft),
+						controller::Axis::LeftY => (LeftStickDown, LeftStickUp),
+						controller::Axis::RightX => (RightStickRight, RightStickLeft),
+						controller::Axis::RightY => (RightStickDown, RightStickUp),
+						controller::Axis::TriggerLeft => (LeftTriggerDown, RightTriggerDown),
+						controller::Axis::TriggerRight => (RightTriggerDown, RightTriggerUp),
+					};
 					if value > self.deadzone {
-						let axis = match axis {
-							controller::Axis::LeftX => LeftStickRight,
-							controller::Axis::LeftY => LeftStickDown,
-							controller::Axis::RightX => RightStickRight,
-							controller::Axis::RightY => RightStickDown,
-							controller::Axis::TriggerLeft => LeftTriggerDown,
-							controller::Axis::TriggerRight => RightTriggerDown,
-						};
-						self.axis_state.insert(axis, value);
+						self.axis_state.insert(axis_positive, value);
+						self.axis_state.insert(axis_negative, 0.0);
 					} else if value < -self.deadzone {
-						let axis = match axis {
-							controller::Axis::LeftX => LeftStickLeft,
-							controller::Axis::LeftY => LeftStickUp,
-							controller::Axis::RightX => RightStickLeft,
-							controller::Axis::RightY => RightStickUp,
-							controller::Axis::TriggerLeft => LeftTriggerUp,
-							controller::Axis::TriggerRight => RightTriggerUp,
-						};
-						self.axis_state.insert(axis, -value);
+						self.axis_state.insert(axis_negative, -value);
+						self.axis_state.insert(axis_positive, 0.0);
 					} else {
-						let (axis_positive, axis_negative) = match axis {
-							controller::Axis::LeftX => (LeftStickRight, LeftStickLeft),
-							controller::Axis::LeftY => (LeftStickDown, LeftStickUp),
-							controller::Axis::RightX => (RightStickRight, RightStickLeft),
-							controller::Axis::RightY => (RightStickDown, RightStickUp),
-							controller::Axis::TriggerLeft => (LeftTriggerDown, RightTriggerDown),
-							controller::Axis::TriggerRight => (RightTriggerDown, RightTriggerUp),
-						};
 						self.axis_state.insert(axis_positive, 0.0);
 						self.axis_state.insert(axis_negative, 0.0);
 					}
