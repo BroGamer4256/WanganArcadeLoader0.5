@@ -94,17 +94,18 @@ unsafe fn load_al_func(func: &str) {
 	if func_ptr.is_null() {
 		panic!("{func} not found in main");
 	}
-	assert_ne!(func_ptr, real_func);
 
-	let real_func = real_func as usize;
-	let real_func = real_func.to_le_bytes();
-	let mut data = Vec::with_capacity(7);
-	data.push(0xB8);
-	for i in real_func {
-		data.push(i);
+	if func_ptr != real_func {
+		let real_func = real_func as usize;
+		let real_func = real_func.to_le_bytes();
+		let mut data = Vec::with_capacity(7);
+		data.push(0xB8);
+		for i in real_func {
+			data.push(i);
+		}
+		data.push(0xFF);
+		data.push(0xE0);
+
+		hook::write_memory(func_ptr as *mut (), &data);
 	}
-	data.push(0xFF);
-	data.push(0xE0);
-
-	hook::write_memory(func_ptr as *mut (), &data);
 }
