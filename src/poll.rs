@@ -170,7 +170,7 @@ impl PollState {
 			.map_err(|_| "Failed to parse gamecontrollerdb.txt")?;
 		let mut controllers = BTreeMap::new();
 		for i in 0..gamepad.num_joysticks()? {
-			let controller = gamepad.open(i).map_err(|_| {
+			if let Ok(controller) = gamepad.open(i).map_err(|_| {
 				format!(
 					"Failed to open {}",
 					gamepad.name_for_index(i).map_or(
@@ -178,8 +178,9 @@ impl PollState {
 						|name| name
 					)
 				)
-			})?;
-			controllers.insert(i, controller);
+			}) {
+				controllers.insert(i, controller);
+			}
 		}
 		let window = unsafe { sdl2::sys::SDL_CreateWindowFrom(handle) };
 
