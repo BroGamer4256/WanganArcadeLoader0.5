@@ -256,7 +256,7 @@ impl PollState {
 						controller::Axis::LeftY => (LeftStickDown, LeftStickUp),
 						controller::Axis::RightX => (RightStickRight, RightStickLeft),
 						controller::Axis::RightY => (RightStickDown, RightStickUp),
-						controller::Axis::TriggerLeft => (LeftTriggerDown, RightTriggerDown),
+						controller::Axis::TriggerLeft => (LeftTriggerDown, LeftTriggerUp),
 						controller::Axis::TriggerRight => (RightTriggerDown, RightTriggerUp),
 					};
 					if value > self.deadzone {
