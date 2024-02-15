@@ -16,6 +16,7 @@ pub struct Config {
 	fullscreen: bool,
 	input_emu: bool,
 	card_emu: bool,
+	block_sudo: bool,
 	deadzone: f32,
 }
 
@@ -54,8 +55,15 @@ pub extern "C" fn adachi() -> c_int {
 unsafe extern "C" fn system(command: *const c_char) -> c_int {
 	let cstr = CStr::from_ptr(command);
 	let str = cstr.to_str().unwrap();
-	if str.starts_with("find") {
-		let command = str.replace("/tmp/data/", "./tmp/data/");
+
+	let block_sudo = if let Some(config) = &CONFIG {
+		config.block_sudo
+	} else {
+		true
+	};
+
+	if !block_sudo || str.starts_with("find") {
+		let command = str.replace("/tmp/", "./tmp/");
 		let command = CString::new(command).unwrap();
 
 		let system = CString::new("system").unwrap();
