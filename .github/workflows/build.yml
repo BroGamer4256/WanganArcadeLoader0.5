@@ -1,0 +1,50 @@
+name: Build and upload artifact
+
+on: [ push, pull_request ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build
+      run: |
+        # make it so we can download 32 bit libs
+        sudo dpkg --add-architecture i386
+
+        # update package list
+        sudo apt-get update
+
+        # install dependecies
+        sudo apt-get install -y build-essential gcc-multilib g++-multilib
+        sudo apt-get install -y libsdl2-dev:i386 libdbus-1-dev:i386 libdecor-0-dev:i386
+
+        # fix includes
+        sudo cp -r /usr/include/dbus-1.0/dbus /usr/include/dbus
+        sudo cp /usr/lib/i386-linux-gnu/dbus-1.0/include/dbus/dbus-arch-deps.h /usr/include/dbus
+        sudo cp /usr/include/libdecor-0/libdecor.h /usr/include
+        sudo cp /usr/include/drm/* /usr/include
+        sudo cp /usr/include/ibus-1.0/* /usr/include
+        sudo cp -r /usr/include/glib-2.0/* /usr/include
+        sudo cp /usr/lib/i386-linux-gnu/glib-2.0/include/glibconfig.h /usr/include
+
+        # add 32bit target to rust
+        rustup target add i686-unknown-linux-gnu
+
+        # fixes pkgconfig cross compile error
+        export PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig/
+        export PKG_CONFIG_SYSROOT_DIR=/usr/lib/i386-linux-gnu/pkgconfig/
+
+        # build
+        cargo build --release --target i686-unknown-linux-gnu
+
+        mkdir -p out/
+        cp target/i686-unknown-linux-gnu/release/libwal_3dxp.so out/
+        cp -r dist/* out/
+    - uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: out
