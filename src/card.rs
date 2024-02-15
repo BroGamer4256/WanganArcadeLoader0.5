@@ -69,18 +69,18 @@ unsafe extern "C" fn exec(card_printer: *mut u32) {
 			card_printer.write(0x00);
 			if data[2] == 0x30 {
 				// track 1
-				for (i, data) in data.iter().skip(3).enumerate() {
+				for (i, data) in data.iter().skip(3).take(0x45).enumerate() {
 					card_data[i] = *data;
 				}
 			} else if data[2] == 0x35 {
 				// track 23
-				for (i, data) in data.iter().skip(3).enumerate() {
+				for (i, data) in data.iter().skip(3).take(0x45 * 2).enumerate() {
 					card_data[i + 0x45] = *data;
 				}
 			} else if data[2] == 0x36 {
 				// track 123
 				card_data.clear();
-				for data in data.iter().skip(3) {
+				for data in data.iter().skip(3).take(0x45 * 3) {
 					card_data.push(*data);
 				}
 			} else {
