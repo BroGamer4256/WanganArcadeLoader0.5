@@ -85,7 +85,7 @@ unsafe fn load_al_func(func: &str) {
 	let openal_module_name = CString::new("libopenal.so").unwrap();
 	let openal_module = dlopen(openal_module_name.as_ptr(), RTLD_LAZY);
 	let real_func = dlsym(openal_module, func_str.as_ptr());
-	if real_func.is_null() {
+	if openal_module.is_null() || real_func.is_null() {
 		panic!("{func} not found in libopenal");
 	}
 
