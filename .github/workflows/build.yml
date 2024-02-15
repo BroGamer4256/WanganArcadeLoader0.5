@@ -44,6 +44,13 @@ jobs:
         mkdir -p out/
         cp target/i686-unknown-linux-gnu/release/libwal_3dxp.so out/
         cp -r dist/* out/
+
+        git clone https://github.com/kcat/openal-soft
+        cd openal-soft/build
+        cmake -DCMAKE_C_FLAGS='-m32' -DCMAKE_CXX_FLAGS='-m32' -DCMAKE_EXE_LINKER_FLAGS='-m32' -DCMAKE_SHARED_LINKER_FLAGS='-m32' -DCMAKE_MODULE_LINKER_FLAGS='-m32' -DALSOFT_STATIC_LIBGCC=TRUE -DALSOFT_STATIC_STDCXX=TRUE -DALSOFT_UTILS=FALSE -DALSOFT_EXAMPLES=FALSE -DCMAKE_BUILD_TYPE=Release ..
+        strip libopenal.so.1.23.1
+        cd ../..
+        mv openal-soft/build/libopenal.so.1.23.1 out/libopenal.so
     - uses: actions/upload-artifact@v4
       with:
         name: dist
