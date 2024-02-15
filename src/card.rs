@@ -87,7 +87,7 @@ unsafe extern "C" fn exec(card_printer: *mut u32) {
 				panic!("Unknown track combination {}", data[2]);
 			}
 			let mut file = std::fs::File::create("card.bin").unwrap();
-			file.write(&card_data).unwrap();
+			file.write_all(&card_data).unwrap();
 		}
 		CANCEL => card_printer.write(0x00),
 		EJECT => {
