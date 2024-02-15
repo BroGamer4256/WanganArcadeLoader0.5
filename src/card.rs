@@ -65,20 +65,20 @@ unsafe extern "C" fn exec(card_printer: *mut u32) {
 			}
 		}
 		WRITE => {
+			let card_data = CARD_DATA.get_mut().unwrap();
 			card_printer.write(0x00);
 			if data[2] == 0x30 {
 				// track 1
 				for (i, data) in data.iter().skip(3).enumerate() {
-					CARD_DATA.get_mut().unwrap()[i] = *data;
+					card_data[i] = *data;
 				}
 			} else if data[2] == 0x35 {
 				// track 23
 				for (i, data) in data.iter().skip(3).enumerate() {
-					CARD_DATA.get_mut().unwrap()[i + 0x45] = *data;
+					card_data[i + 0x45] = *data;
 				}
 			} else if data[2] == 0x36 {
 				// track 123
-				let card_data = CARD_DATA.get_mut().unwrap();
 				card_data.clear();
 				for data in data.iter().skip(3) {
 					card_data.push(*data);
@@ -87,12 +87,13 @@ unsafe extern "C" fn exec(card_printer: *mut u32) {
 				panic!("Unknown track combination {}", data[2]);
 			}
 			let mut file = std::fs::File::create("card.bin").unwrap();
-			file.write(&CARD_DATA.lock().unwrap()).unwrap();
+			file.write(&card_data).unwrap();
 		}
 		CANCEL => card_printer.write(0x00),
 		EJECT => {
 			CARD_DATA.get_mut().unwrap().clear();
 			card_printer.write(0x00);
+			card_printer.byte_add(0x04).write(0x30);
 		}
 		PRINTSETTING => card_printer.write(0x00),
 
