@@ -60,7 +60,7 @@ unsafe extern "C" fn exec(card_printer: *mut u32) {
 			write_buf.byte_add(0x04).write(0x33);
 			write_buf.byte_add(0x05).write(0x30);
 			write_buf.byte_add(0x06).write(0x30);
-			for (i, data) in CARD_DATA.get_mut().unwrap().iter().enumerate() {
+			for (i, data) in CARD_DATA.get_mut().unwrap().iter().take(0x45 * 3).enumerate() {
 				write_buf.byte_add(i + 0x06).write(*data);
 			}
 		}
