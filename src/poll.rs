@@ -260,6 +260,15 @@ impl PollState {
 							controller::Axis::TriggerLeft => LeftTriggerDown,
 							controller::Axis::TriggerRight => RightTriggerDown,
 						};
+						
+						if axis == LeftStickRight {
+							self.axis_state.insert(LeftStickLeft, 0.0);
+						}
+
+						if axis == RightStickRight {
+							self.axis_state.insert(RightStickLeft, 0.0);
+						}
+						
 						self.axis_state.insert(axis, value);
 					} else if value < -self.deadzone {
 						let axis = match axis {
@@ -270,6 +279,15 @@ impl PollState {
 							controller::Axis::TriggerLeft => LeftTriggerUp,
 							controller::Axis::TriggerRight => RightTriggerUp,
 						};
+						
+						if axis == LeftStickLeft {
+							self.axis_state.insert(LeftStickRight, 0.0);
+						}
+
+						if axis == RightStickLeft {
+							self.axis_state.insert(RightStickRight, 0.0);
+						}
+
 						self.axis_state.insert(axis, -value);
 					} else {
 						let (axis_positive, axis_negative) = match axis {
