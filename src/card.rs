@@ -60,7 +60,7 @@ unsafe extern "C" fn exec(card_printer: *mut u32) {
 			write_buf.byte_add(0x04).write(0x33);
 			write_buf.byte_add(0x05).write(0x30);
 			write_buf.byte_add(0x06).write(0x30);
-			for (i, data) in CARD_DATA.get_mut().unwrap().iter().enumerate() {
+			for (i, data) in CARD_DATA.get_mut().unwrap().iter().take(0x45 * 3).enumerate() {
 				write_buf.byte_add(i + 0x06).write(*data);
 			}
 		}
@@ -87,7 +87,7 @@ unsafe extern "C" fn exec(card_printer: *mut u32) {
 				panic!("Unknown track combination {}", data[2]);
 			}
 			let mut file = std::fs::File::create("card.bin").unwrap();
-			file.write(&card_data).unwrap();
+			file.write_all(&card_data).unwrap();
 		}
 		CANCEL => card_printer.write(0x00),
 		EJECT => {
