@@ -11,13 +11,37 @@ pub mod hook;
 pub mod jamma;
 pub mod poll;
 
+fn default_as_false() -> bool {
+    false
+}
+
+fn default_as_true() -> bool {
+    true
+}
+
+fn default_as_0_01() -> f32 {
+	0.01
+}
+
 #[derive(serde::Deserialize)]
 pub struct Config {
+	#[serde(default = "default_as_false")]
 	fullscreen: bool,
+
+	#[serde(default = "default_as_true")]
 	input_emu: bool,
+
+	#[serde(default = "default_as_true")]
 	card_emu: bool,
+
+	#[serde(default = "default_as_true")]
 	block_sudo: bool,
+
+	#[serde(default = "default_as_0_01")]
 	deadzone: f32,
+
+	#[serde(default = "default_as_false")]
+	network: bool
 }
 
 pub struct KeyConfig {
@@ -183,7 +207,6 @@ unsafe fn init() {
 
 	hook::hook_symbol("_ZNK6clHaspcvbEv", adachi as *const ());
 	hook::hook_symbol("_ZNK7clHasp2cvbEv", adachi as *const ());
-	hook::hook_symbol("_ZN18clSeqBootNetThread3runEPv", adachi as *const ());
 	adm::init();
 	al::load_al_funcs();
 
@@ -194,8 +217,12 @@ unsafe fn init() {
 		if config.card_emu {
 			card::init();
 		}
+		if !config.network {
+			hook::hook_symbol("_ZN18clSeqBootNetThread3runEPv", adachi as *const ());
+		}
 	} else {
 		jamma::init();
 		card::init();
+		hook::hook_symbol("_ZN18clSeqBootNetThread3runEPv", adachi as *const ());
 	}
 }

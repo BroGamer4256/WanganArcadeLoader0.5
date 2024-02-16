@@ -2,5 +2,6 @@ fullscreen = false
 input_emu = true
 card_emu = true
 block_sudo = true
+network = false
 # 1% deadzone
 deadzone = 0.01
