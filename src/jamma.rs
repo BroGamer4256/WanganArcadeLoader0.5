@@ -38,8 +38,10 @@ unsafe extern "C" fn handle_inputs(data: *mut u32) {
 	sdl.update();
 
 	if sdl.is_tapped(&keyconfig.card_insert) {
-		if let Ok(card_data) = std::fs::read("card.bin") {
-			card::CARD_DATA.get_mut().unwrap().extend(card_data);
+		if let Ok(card) = std::fs::read("card.bin") {
+			let card_data = card::CARD_DATA.get_mut().unwrap();
+			card_data.clear();
+			card_data.extend(card);
 		} else {
 			println!("Cannot open card.bin");
 		}
