@@ -16,4 +16,4 @@ dist-targz: dist-no-7z
 clean:
 	@rm -rf out/
 	@cargo clean
-	@rm dist.*
+	-rm -f dist.*
