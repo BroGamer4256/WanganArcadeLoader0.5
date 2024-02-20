@@ -9,3 +9,11 @@ dist-no-7z: all
 dist: dist-no-7z
 	@cd out && 7z a -t7z ../dist.7z .
 	@rm -rf out
+
+dist-targz: dist-no-7z
+	@tar -czvf dist.tar.gz ./dist
+	@rm -rf out
+clean:
+	@rm -rf out/
+	@cargo clean
+	@rm dist.*
