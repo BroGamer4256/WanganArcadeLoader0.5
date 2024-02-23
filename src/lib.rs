@@ -80,8 +80,11 @@ unsafe extern "C" fn system(command: *const c_char) -> c_int {
 #[no_mangle]
 unsafe extern "C" fn fopen(filename: *const c_char, mode: *const c_char) -> *const () {
 	let filename = CStr::from_ptr(filename).to_str().unwrap();
-	let filename = filename.replace("/tmp/", "./tmp/");
-	let filename = CString::new(filename).unwrap();
+	let filename = if filename.starts_with("/tmp") {
+		CString::new(filename.replace("/tmp/", "./tmp/")).unwrap()
+	} else {
+		CString::new(filename).unwrap()
+	};
 
 	let fopen = CString::new("fopen").unwrap();
 	let fopen = dlsym(RTLD_NEXT, fopen.as_ptr());
@@ -90,28 +93,47 @@ unsafe extern "C" fn fopen(filename: *const c_char, mode: *const c_char) -> *con
 }
 
 #[no_mangle]
+unsafe extern "C" fn rename(old: *const c_char, new: *const c_char) -> c_int {
+	let old = CStr::from_ptr(old).to_str().unwrap();
+	let old = old.replace("/tmp/", "./tmp/");
+	let old = CString::new(old).unwrap();
+
+	let new = CStr::from_ptr(new).to_str().unwrap();
+	let new = new.replace("/tmp/", "./tmp/");
+	let new = CString::new(new).unwrap();
+
+	let rename = CString::new("rename").unwrap();
+	let rename = dlsym(RTLD_NEXT, rename.as_ptr());
+	let rename: extern "C" fn(*const c_char, *const c_char) -> c_int = transmute(rename);
+	rename(old.as_ptr(), new.as_ptr())
+}
+
+#[no_mangle]
 unsafe extern "C" fn _ZNSt13basic_filebufIcSt11char_traitsIcEE4openEPKcSt13_Ios_Openmode(
-	_test: c_int,
+	this: c_int,
 	filename: *const c_char,
 	mode: c_int,
 ) -> *const () {
 	if let Ok(filename) = CStr::from_ptr(filename).to_str() {
-		let filename = filename.replace("/tmp/", "./tmp/");
-		let filename = CString::new(filename).unwrap();
+		let filename = if filename.starts_with("/tmp") {
+			CString::new(filename.replace("/tmp/", "./tmp/")).unwrap()
+		} else {
+			CString::new(filename).unwrap()
+		};
 
 		let open =
 			CString::new("_ZNSt13basic_filebufIcSt11char_traitsIcEE4openEPKcSt13_Ios_Openmode")
 				.unwrap();
 		let open = dlsym(RTLD_NEXT, open.as_ptr());
 		let open: extern "C" fn(c_int, *const c_char, c_int) -> *const () = transmute(open);
-		open(_test, filename.as_ptr(), mode)
+		open(this, filename.as_ptr(), mode)
 	} else {
 		let open =
 			CString::new("_ZNSt13basic_filebufIcSt11char_traitsIcEE4openEPKcSt13_Ios_Openmode")
 				.unwrap();
 		let open = dlsym(RTLD_NEXT, open.as_ptr());
 		let open: extern "C" fn(c_int, *const c_char, c_int) -> *const () = transmute(open);
-		open(_test, filename, mode)
+		open(this, filename, mode)
 	}
 }
 
