@@ -4,3 +4,8 @@ card_emu = true
 block_sudo = true
 # 1% deadzone
 deadzone = 0.01
+
+width = 640
+height = 480
+# 73 for 4:3, 90 for 16:9
+fov = 73
