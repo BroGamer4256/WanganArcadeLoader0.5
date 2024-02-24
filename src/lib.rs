@@ -20,7 +20,6 @@ pub struct Config {
 	deadzone: f32,
 	width: i32,
 	height: i32,
-	fov: i32,
 }
 
 pub struct KeyConfig {
@@ -219,61 +218,11 @@ unsafe extern "C" fn make_perspective(
 		} else {
 			aspect_ratio
 		};
+		let fov_ratio = fov / (640.0 / 480.0);
+		let fov = fov_ratio * aspect_ratio;
 		return ORIGINAL_MAKE_PERSPECTIVE.unwrap()(this, fov, a2, aspect_ratio, a4, a5);
 	}
 	ORIGINAL_MAKE_PERSPECTIVE.unwrap()(this, fov, a2, aspect_ratio, a4, a5)
-}
-
-static mut ORIGINAL_MAP_CAR_CAM: Option<extern "C" fn(*const c_void, *mut c_float)> = None;
-unsafe extern "C" fn map_car_cam(this: *const c_void, camera: *mut c_float) {
-	ORIGINAL_MAP_CAR_CAM.unwrap()(this, camera);
-	if let Some(config) = CONFIG.as_ref() {
-		if camera.byte_add(0x40).read().to_degrees().round() == 73.0 {
-			camera.byte_add(0x40).write((config.fov as f32).to_radians());
-		}
-	}
-}
-
-static mut ORIGINAL_GHOST_CAR_CAM: Option<extern "C" fn(*const c_void, *mut c_float, c_int)> = None;
-unsafe extern "C" fn ghost_car_cam(this: *const c_void, camera: *mut c_float, a2: c_int) {
-	ORIGINAL_GHOST_CAR_CAM.unwrap()(this, camera, a2);
-	if let Some(config) = CONFIG.as_ref() {
-		if camera.byte_add(0x40).read().to_degrees().round() == 73.0 {
-			camera.byte_add(0x40).write((config.fov as f32).to_radians());
-		}
-	}
-}
-
-static mut ORIGINAL_OTHER_CAR_CAM: Option<extern "C" fn(*const c_void, *mut c_float, c_int)> = None;
-unsafe extern "C" fn other_car_cam(this: *const c_void, camera: *mut c_float, a2: c_int) {
-	ORIGINAL_OTHER_CAR_CAM.unwrap()(this, camera, a2);
-	if let Some(config) = CONFIG.as_ref() {
-		if camera.byte_add(0x40).read().to_degrees().round() == 73.0 {
-			camera.byte_add(0x40).write((config.fov as f32).to_radians());
-		}
-	}
-}
-
-static mut ORIGINAL_TARGET_CAR_CAM: Option<extern "C" fn(*const c_void, *mut c_float, c_int)> =
-	None;
-unsafe extern "C" fn target_car_cam(this: *const c_void, camera: *mut c_float, a2: c_int) {
-	ORIGINAL_TARGET_CAR_CAM.unwrap()(this, camera, a2);
-	if let Some(config) = CONFIG.as_ref() {
-		if camera.byte_add(0x40).read().to_degrees().round() == 73.0 {
-			camera.byte_add(0x40).write((config.fov as f32).to_radians());
-		}
-	}
-}
-
-static mut ORIGINAL_CAR_CAM: Option<extern "C" fn(*const c_void, *mut c_float, c_int, c_int)> =
-	None;
-unsafe extern "C" fn car_cam(this: *const c_void, camera: *mut c_float, a2: c_int, a3: c_int) {
-	ORIGINAL_CAR_CAM.unwrap()(this, camera, a2, a3);
-	if let Some(config) = CONFIG.as_ref() {
-		if camera.byte_add(0x40).read().to_degrees().round() == 73.0 {
-			camera.byte_add(0x40).write((config.fov as f32).to_radians());
-		}
-	}
 }
 
 #[ctor::ctor]
@@ -359,27 +308,6 @@ unsafe fn init() {
 	ORIGINAL_MAKE_PERSPECTIVE = Some(transmute(hook::hook_symbol(
 		"_ZN3Gap4Math11igMatrix44f32makePerspectiveProjectionRadiansEfffff",
 		make_perspective as *const (),
-	)));
-
-	ORIGINAL_MAP_CAR_CAM = Some(transmute(hook::hook_symbol(
-		"_ZN2yt10CMapRunner16GetInfoCarCameraEP14SInfoCarCamera",
-		map_car_cam as *const (),
-	)));
-	ORIGINAL_GHOST_CAR_CAM = Some(transmute(hook::hook_symbol(
-		"_ZN2yt6CGhost16GetInfoCarCameraEP14SInfoCarCamerai",
-		ghost_car_cam as *const (),
-	)));
-	ORIGINAL_OTHER_CAR_CAM = Some(transmute(hook::hook_symbol(
-		"_ZN2yt9COtherCar16GetInfoCarCameraEP14SInfoCarCamerai",
-		other_car_cam as *const (),
-	)));
-	ORIGINAL_TARGET_CAR_CAM = Some(transmute(hook::hook_symbol(
-		"_ZN2yt7CTarget16GetInfoCarCameraEP14SInfoCarCamerai",
-		target_car_cam as *const (),
-	)));
-	ORIGINAL_CAR_CAM = Some(transmute(hook::hook_symbol(
-		"_ZN2yt8CMachine16GetInfoCarCameraEP14SInfoCarCamera9EPlayViewb",
-		car_cam as *const (),
 	)));
 
 	adm::init();
