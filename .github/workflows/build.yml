@@ -40,6 +40,7 @@ jobs:
 
         # build
         cargo build --release --target i686-unknown-linux-gnu
+        make check
 
         mkdir -p out/
         cp target/i686-unknown-linux-gnu/release/libwal_3dxp.so out/
