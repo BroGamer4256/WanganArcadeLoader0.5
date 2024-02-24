@@ -77,7 +77,6 @@ extern "C" fn adm_config() -> *const *const AdmChooseMode {
 extern "C" fn adm_fb_config() -> *const AdmFBConfig {
 	let adm = AdmFBConfig {
 		ident: [b'F', b'B', b'C', b'F'],
-		..Default::default()
 	};
 	let adm = Box::new(adm);
 	Box::leak(adm)
@@ -86,7 +85,6 @@ extern "C" fn adm_fb_config() -> *const AdmFBConfig {
 extern "C" fn adm_screen() -> *const AdmScreen {
 	let adm = AdmScreen {
 		ident: [b'S', b'C', b'R', b'N'],
-		..Default::default()
 	};
 	let adm = Box::new(adm);
 	Box::leak(adm)
@@ -95,7 +93,6 @@ extern "C" fn adm_screen() -> *const AdmScreen {
 unsafe extern "C" fn adm_context() -> *const AdmGraphicsContext {
 	let adm = AdmGraphicsContext {
 		ident: [b'C', b'N', b'T', b'X'],
-		..Default::default()
 	};
 	let adm = Box::new(adm);
 	Box::leak(adm)
@@ -104,7 +101,7 @@ unsafe extern "C" fn adm_context() -> *const AdmGraphicsContext {
 unsafe extern "C" fn adm_window(device: *mut AdmDevice) -> *const AdmWindow {
 	let device = device.as_mut().unwrap();
 	let monitor = Monitor::from_primary();
-	let window_mode = if let Some(config) = &CONFIG {
+	let window_mode = if let Some(config) = CONFIG.as_ref() {
 		if config.fullscreen {
 			WindowMode::FullScreen(&monitor)
 		} else {
@@ -114,7 +111,7 @@ unsafe extern "C" fn adm_window(device: *mut AdmDevice) -> *const AdmWindow {
 		WindowMode::Windowed
 	};
 	device.glfw.window_hint(WindowHint::Resizable(false)); // Force floating on tiling window managers
-	let (width, height) = if let Some(config) = &CONFIG {
+	let (width, height) = if let Some(config) = CONFIG.as_ref() {
 		(config.width as u32, config.height as u32)
 	} else {
 		(640, 480)

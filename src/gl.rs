@@ -1,8 +1,7 @@
 use crate::*;
 use glfw::*;
-use std::ffi::CString;
 
-const FUNCS: [&'static str; 1110] = [
+const FUNCS: [&str; 1110] = [
 	"glUniform4iARB",
 	"glTexSubImage3D",
 	"glDrawElements",
@@ -1135,7 +1134,6 @@ unsafe fn load_gl_func(func: &str, glfw: &Glfw) {
 		panic!("{func} not found in main");
 	}
 
-	let real_func = real_func as usize;
 	let real_func = real_func.to_le_bytes();
 	let mut data = Vec::with_capacity(7);
 	data.push(0xB8);

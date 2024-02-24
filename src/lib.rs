@@ -59,7 +59,7 @@ unsafe extern "C" fn system(command: *const c_char) -> c_int {
 	let cstr = CStr::from_ptr(command);
 	let str = cstr.to_str().unwrap();
 
-	let block_sudo = if let Some(config) = &CONFIG {
+	let block_sudo = if let Some(config) = CONFIG.as_ref() {
 		config.block_sudo
 	} else {
 		true
@@ -144,7 +144,7 @@ static mut LUA_GETGLOBAL: Option<extern "C" fn(*const c_void, *const c_char) -> 
 static mut LUA_SETGLOBAL: Option<extern "C" fn(*const c_void, *const c_char)> = None;
 static mut LUA_PUSHNUMBER: Option<extern "C" fn(*const c_void, c_double)> = None;
 unsafe extern "C" fn lua_getglobal(state: *const c_void, global: *const c_char) -> c_int {
-	if let Some(config) = &CONFIG {
+	if let Some(config) = CONFIG.as_ref() {
 		let str = CStr::from_ptr(global).to_str().unwrap();
 		match str {
 			"SCREEN_XSIZE" => {
@@ -183,7 +183,7 @@ unsafe extern "C" fn set_viewport(
 	a6: c_float,
 ) -> *const c_void {
 	if width == 88 && height == 82 {
-		if let Some(config) = &CONFIG {
+		if let Some(config) = CONFIG.as_ref() {
 			let width = config.width as f32 * 0.1375;
 			let height = config.height as f32 * 0.17;
 			return ORIGINAL_SET_VIEWPORT.unwrap()(
@@ -211,7 +211,7 @@ unsafe extern "C" fn make_perspective(
 	a4: c_float,
 	a5: c_float,
 ) {
-	if let Some(config) = &CONFIG {
+	if let Some(config) = CONFIG.as_ref() {
 		let width = config.width as f32;
 		let height = config.height as f32;
 		let aspect_ratio = if aspect_ratio == 640.0 / 480.0 {
@@ -227,7 +227,7 @@ unsafe extern "C" fn make_perspective(
 static mut ORIGINAL_MAP_CAR_CAM: Option<extern "C" fn(*const c_void, *mut c_float)> = None;
 unsafe extern "C" fn map_car_cam(this: *const c_void, camera: *mut c_float) {
 	ORIGINAL_MAP_CAR_CAM.unwrap()(this, camera);
-	if let Some(config) = &CONFIG {
+	if let Some(config) = CONFIG.as_ref() {
 		if camera.byte_add(0x40).read().to_degrees().round() == 73.0 {
 			camera.byte_add(0x40).write((config.fov as f32).to_radians());
 		}
@@ -237,7 +237,7 @@ unsafe extern "C" fn map_car_cam(this: *const c_void, camera: *mut c_float) {
 static mut ORIGINAL_GHOST_CAR_CAM: Option<extern "C" fn(*const c_void, *mut c_float, c_int)> = None;
 unsafe extern "C" fn ghost_car_cam(this: *const c_void, camera: *mut c_float, a2: c_int) {
 	ORIGINAL_GHOST_CAR_CAM.unwrap()(this, camera, a2);
-	if let Some(config) = &CONFIG {
+	if let Some(config) = CONFIG.as_ref() {
 		if camera.byte_add(0x40).read().to_degrees().round() == 73.0 {
 			camera.byte_add(0x40).write((config.fov as f32).to_radians());
 		}
@@ -247,7 +247,7 @@ unsafe extern "C" fn ghost_car_cam(this: *const c_void, camera: *mut c_float, a2
 static mut ORIGINAL_OTHER_CAR_CAM: Option<extern "C" fn(*const c_void, *mut c_float, c_int)> = None;
 unsafe extern "C" fn other_car_cam(this: *const c_void, camera: *mut c_float, a2: c_int) {
 	ORIGINAL_OTHER_CAR_CAM.unwrap()(this, camera, a2);
-	if let Some(config) = &CONFIG {
+	if let Some(config) = CONFIG.as_ref() {
 		if camera.byte_add(0x40).read().to_degrees().round() == 73.0 {
 			camera.byte_add(0x40).write((config.fov as f32).to_radians());
 		}
@@ -258,7 +258,7 @@ static mut ORIGINAL_TARGET_CAR_CAM: Option<extern "C" fn(*const c_void, *mut c_f
 	None;
 unsafe extern "C" fn target_car_cam(this: *const c_void, camera: *mut c_float, a2: c_int) {
 	ORIGINAL_TARGET_CAR_CAM.unwrap()(this, camera, a2);
-	if let Some(config) = &CONFIG {
+	if let Some(config) = CONFIG.as_ref() {
 		if camera.byte_add(0x40).read().to_degrees().round() == 73.0 {
 			camera.byte_add(0x40).write((config.fov as f32).to_radians());
 		}
@@ -269,7 +269,7 @@ static mut ORIGINAL_CAR_CAM: Option<extern "C" fn(*const c_void, *mut c_float, c
 	None;
 unsafe extern "C" fn car_cam(this: *const c_void, camera: *mut c_float, a2: c_int, a3: c_int) {
 	ORIGINAL_CAR_CAM.unwrap()(this, camera, a2, a3);
-	if let Some(config) = &CONFIG {
+	if let Some(config) = CONFIG.as_ref() {
 		if camera.byte_add(0x40).read().to_degrees().round() == 73.0 {
 			camera.byte_add(0x40).write((config.fov as f32).to_radians());
 		}
@@ -284,7 +284,7 @@ unsafe fn init() {
 	}
 
 	if let Ok(toml) = std::fs::read_to_string("config.toml") {
-		CONFIG = Some(toml::from_str(&toml).unwrap());
+		CONFIG = toml::from_str(&toml).ok();
 	}
 
 	// Really what I should do is implement a custom serde::Deserialize for KeyBindings
@@ -385,7 +385,7 @@ unsafe fn init() {
 	adm::init();
 	al::load_al_funcs();
 
-	if let Some(config) = &CONFIG {
+	if let Some(config) = CONFIG.as_ref() {
 		if config.input_emu {
 			jamma::init();
 		}

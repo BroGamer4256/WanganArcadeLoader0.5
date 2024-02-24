@@ -26,7 +26,7 @@ unsafe extern "C" fn handle_inputs(data: *mut u32) {
 		return;
 	};
 	if SDL_STATE.is_none() {
-		let deadzone = if let Some(config) = &CONFIG {
+		let deadzone = if let Some(config) = CONFIG.as_ref() {
 			config.deadzone
 		} else {
 			0.01

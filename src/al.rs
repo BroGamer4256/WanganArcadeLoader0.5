@@ -1,7 +1,6 @@
 use crate::*;
-use std::ffi::CString;
 
-const FUNCS: [&'static str; 69] = [
+const FUNCS: [&str; 69] = [
 	"alcSuspendContext",
 	"alcCloseDevice",
 	"alListener3f",

@@ -94,7 +94,7 @@ unsafe extern "C" fn exec(card_printer: *mut u32) {
 			}
 			_ = std::fs::remove_file("card.bin");
 			let mut file = std::fs::File::create("card.bin").unwrap();
-			file.write_all(&card_data).unwrap();
+			file.write_all(card_data).unwrap();
 		}
 		CANCEL => card_printer.write(0x00),
 		EJECT => {
@@ -104,7 +104,7 @@ unsafe extern "C" fn exec(card_printer: *mut u32) {
 		}
 		PRINTSETTING => card_printer.write(0x00),
 
-		_ => panic!("Unhandled command {:#0x}", command as u8),
+		_ => panic!("Unhandled command {:#0x}", command),
 	}
 }
 

@@ -51,7 +51,7 @@ pub struct KeyBindings {
 	keys: Vec<KeyBinding>,
 }
 
-const MAPPINGS: Map<&'static str, KeyBinding> = phf_map! {
+const MAPPINGS: Map<&str, KeyBinding> = phf_map! {
 	"F1" => KeyBinding::Keycode(Keycode::F1),
 	"F2" => KeyBinding::Keycode(Keycode::F2),
 	"F3" => KeyBinding::Keycode(Keycode::F3),
@@ -310,13 +310,13 @@ impl PollState {
 		self.button_state.contains(button)
 	}
 	fn button_is_up(&self, button: &Button) -> bool {
-		!self.button_state.contains(&button)
+		!self.button_state.contains(button)
 	}
 	fn button_was_down(&self, button: &Button) -> bool {
-		self.last_button_state.contains(&button)
+		self.last_button_state.contains(button)
 	}
 	fn button_was_up(&self, button: &Button) -> bool {
-		!self.last_button_state.contains(&button)
+		!self.last_button_state.contains(button)
 	}
 	fn button_is_tapped(&self, button: &Button) -> bool {
 		self.button_is_down(button) && self.button_was_up(button)
