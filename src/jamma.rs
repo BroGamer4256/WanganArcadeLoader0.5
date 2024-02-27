@@ -66,10 +66,10 @@ unsafe extern "C" fn handle_inputs(data: *mut u32) {
 		bits |= 0x80;
 	}
 	if sdl.is_down(&keyconfig.brake) > 0.0 {
-		bits |= 0x10;
+		bits |= 0x20;
 	}
 	if sdl.is_down(&keyconfig.gas) > 0.0 {
-		bits |= 0x20;
+		bits |= 0x10;
 	}
 	if sdl.is_tapped(&keyconfig.gear_next) {
 		if GEAR_INDEX < 6 {
