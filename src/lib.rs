@@ -73,6 +73,14 @@ unsafe extern "C" fn system(command: *const c_char) -> c_int {
 		let system = dlsym(RTLD_NEXT, system.as_ptr());
 		let system: extern "C" fn(*const c_char) -> c_int = transmute(system);
 
+		let setenv = CString::new("setenv").unwrap();
+		let setenv = dlsym(RTLD_DEFAULT, setenv.as_ptr());
+		let setenv: extern "C" fn(*const c_char, *const c_char, c_int) -> c_int = transmute(setenv);
+
+		let preload = CString::new("LD_PRELOAD").unwrap();
+		let empty = CString::new("").unwrap();
+
+		setenv(preload.as_ptr(), empty.as_ptr(), 1);
 		system(command.as_ptr())
 	} else {
 		dbg!(str);
