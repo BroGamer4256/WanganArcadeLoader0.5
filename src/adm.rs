@@ -143,6 +143,16 @@ unsafe extern "C" fn adm_swap_buffers(window: *mut AdmWindow) -> c_int {
 	0
 }
 
+static mut CL_APP_INSTANCE: Option<extern "C" fn() -> *const c_void> = None;
+static mut CL_APP_IS_MAIN_THREAD: Option<extern "C" fn(*const c_void) -> bool> = None;
+static mut ORIGINAL_DEL_SPRITE_MANAGER: Option<extern "C" fn(*const c_void)> = None;
+unsafe extern "C" fn del_sprite_manager(this: *const c_void) {
+	let cl_app = CL_APP_INSTANCE.unwrap()();
+	if CL_APP_IS_MAIN_THREAD.unwrap()(cl_app) {
+		ORIGINAL_DEL_SPRITE_MANAGER.unwrap()(this);
+	}
+}
+
 pub unsafe fn init() {
 	hook::hook_symbol("admvt_setup", adachi as *const ());
 	hook::hook_symbol("admShutdown", adachi as *const ());
@@ -162,5 +172,14 @@ pub unsafe fn init() {
 	hook::hook_symbol("admGetDeviceAttribi", adachi as *const ());
 	hook::hook_symbol("admSwapBuffers", adm_swap_buffers as *const ());
 	hook::hook_symbol("admSetMonitorGamma", adachi as *const ());
-	hook::hook_symbol("_ZN15clSpriteManagerD1Ev", adachi as *const ());
+	ORIGINAL_DEL_SPRITE_MANAGER = Some(transmute(hook::hook_symbol(
+		"_ZN15clSpriteManagerD1Ev",
+		del_sprite_manager as *const (),
+	)));
+	CL_APP_INSTANCE = Some(transmute(hook::get_symbol(
+		"_ZN11clAppSystem11getInstanceEv",
+	)));
+	CL_APP_IS_MAIN_THREAD = Some(transmute(hook::get_symbol(
+		"_ZN11clAppSystem12isMainThreadEv",
+	)));
 }
