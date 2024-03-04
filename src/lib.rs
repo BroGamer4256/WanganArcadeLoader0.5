@@ -38,6 +38,10 @@ pub struct KeyConfig {
 	gear_fourth: KeyBindings,
 	gear_fifth: KeyBindings,
 	gear_sixth: KeyBindings,
+	gear_up: KeyBindings,
+	gear_left: KeyBindings,
+	gear_down: KeyBindings,
+	gear_right: KeyBindings,
 
 	perspective: KeyBindings,
 	intrude: KeyBindings,
@@ -178,6 +182,10 @@ unsafe fn init() {
 		gear_fourth: Vec<String>,
 		gear_fifth: Vec<String>,
 		gear_sixth: Vec<String>,
+		gear_up: Vec<String>,
+		gear_left: Vec<String>,
+		gear_down: Vec<String>,
+		gear_right: Vec<String>,
 
 		perspective: Vec<String>,
 		intrude: Vec<String>,
@@ -204,6 +212,10 @@ unsafe fn init() {
 		gear_fourth: parse_keybinding(keyconfig.gear_fourth),
 		gear_fifth: parse_keybinding(keyconfig.gear_fifth),
 		gear_sixth: parse_keybinding(keyconfig.gear_sixth),
+		gear_up: parse_keybinding(keyconfig.gear_up),
+		gear_left: parse_keybinding(keyconfig.gear_left),
+		gear_down: parse_keybinding(keyconfig.gear_down),
+		gear_right: parse_keybinding(keyconfig.gear_right),
 
 		perspective: parse_keybinding(keyconfig.perspective),
 		intrude: parse_keybinding(keyconfig.intrude),

@@ -1,22 +1,22 @@
 use crate::*;
 
-static mut SDL_STATE: Option<poll::PollState> = None;
+pub static mut SDL_STATE: Option<poll::PollState> = None;
 
 static mut GEAR_INDEX: u8 = 0;
 
+const GEAR_LEFT: u32 = 1;
+const GEAR_RIGHT: u32 = 2;
+const GEAR_UP: u32 = 4;
+const GEAR_DOWN: u32 = 8;
 fn set_gear_bits(index: u8) -> u32 {
-	const LEFT: u32 = 1;
-	const RIGHT: u32 = 2;
-	const TOP: u32 = 4;
-	const BOTTOM: u32 = 8;
 	match index {
 		0 => 0,
-		1 => LEFT | TOP,
-		2 => LEFT | BOTTOM,
-		3 => TOP,
-		4 => BOTTOM,
-		5 => RIGHT | TOP,
-		6 => RIGHT | BOTTOM,
+		1 => GEAR_LEFT | GEAR_UP,
+		2 => GEAR_LEFT | GEAR_DOWN,
+		3 => GEAR_UP,
+		4 => GEAR_DOWN,
+		5 => GEAR_RIGHT | GEAR_UP,
+		6 => GEAR_RIGHT | GEAR_DOWN,
 		_ => 0,
 	}
 }
@@ -95,6 +95,22 @@ unsafe extern "C" fn handle_inputs(data: *mut u32) {
 		GEAR_INDEX = 6;
 	}
 	bits |= set_gear_bits(GEAR_INDEX);
+	if sdl.is_down(&keyconfig.gear_up) > 0.0 {
+		GEAR_INDEX = 0;
+		bits |= GEAR_UP;
+	}
+	if sdl.is_down(&keyconfig.gear_left) > 0.0 {
+		GEAR_INDEX = 0;
+		bits |= GEAR_LEFT;
+	}
+	if sdl.is_down(&keyconfig.gear_down) > 0.0 {
+		GEAR_INDEX = 0;
+		bits |= GEAR_DOWN;
+	}
+	if sdl.is_down(&keyconfig.gear_right) > 0.0 {
+		GEAR_INDEX = 0;
+		bits |= GEAR_RIGHT;
+	}
 	data.byte_add(0x8).write(bits);
 
 	let n2jvio = hook::get_symbol("n2jvio") as *mut u16;
@@ -121,7 +137,6 @@ unsafe extern "C" fn handle_inputs(data: *mut u32) {
 }
 
 pub unsafe fn init() {
-	hook::hook_symbol("_ZN10clSystemN24initEb", adachi as *const ());
 	hook::hook_symbol("_ZN10clSystemN212initSystemN2Ev", adachi as *const ());
 	hook::hook_symbol("_ZN18clInputDeviceJamma8checkUseEv", adachi as *const ());
 	hook::hook_symbol(
@@ -145,4 +160,7 @@ pub unsafe fn init() {
 		"_ZN16clInputDevicePad8joyStickEPN3Gap7Display12igControllerEtff",
 		adachi as *const (),
 	);
+
+	hook::hook_symbol("n2JvioTxVsync", adachi as *const ());
+	hook::hook_symbol("n2JvioAckTxVsync", adachi as *const ());
 }
