@@ -5,6 +5,8 @@ use sdl2::controller::Button;
 use sdl2::event::Event;
 use sdl2::*;
 use std::collections::*;
+use std::ffi::CString;
+use std::mem::MaybeUninit;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum Axis {
@@ -38,6 +40,9 @@ pub struct PollState {
 	last_button_state: Vec<Button>,
 	axis_state: BTreeMap<Axis, f32>,
 	last_axis_state: BTreeMap<Axis, f32>,
+	#[cfg(target_os = "linux")]
+	display: *mut x11::xlib::Display,
+	window_handle: *const libc::c_void,
 }
 
 #[derive(Clone)]
@@ -184,6 +189,13 @@ impl PollState {
 		}
 		let window = unsafe { sdl2::sys::SDL_CreateWindowFrom(handle) };
 
+		#[cfg(target_os = "linux")]
+		let display = {
+			let display = std::env::var("DISPLAY").expect("Not connected to X display?");
+			let display = CString::new(display).unwrap();
+			unsafe { x11::xlib::XOpenDisplay(display.as_ptr()) }
+		};
+
 		Ok(Self {
 			sdl,
 			video,
@@ -199,6 +211,9 @@ impl PollState {
 			last_button_state: Vec::with_capacity(32),
 			axis_state: BTreeMap::new(),
 			last_axis_state: BTreeMap::new(),
+			#[cfg(target_os = "linux")]
+			display,
+			window_handle: handle,
 		})
 	}
 
@@ -211,7 +226,23 @@ impl PollState {
 		self.last_button_state.extend(&self.button_state);
 		self.last_axis_state.extend(&self.axis_state);
 
+		#[cfg(target_os = "linux")]
+		{
+			let mut window: MaybeUninit<x11::xlib::Window> = MaybeUninit::uninit();
+			let mut state = MaybeUninit::uninit();
+			unsafe {
+				x11::xlib::XGetInputFocus(self.display, window.as_mut_ptr(), state.as_mut_ptr())
+			};
+			if unsafe { window.assume_init() } == self.window_handle as x11::xlib::Window {
+				self.keyboard_state = device_query::DeviceState::new().get_keys();
+			} else {
+				self.keyboard_state = Vec::new();
+			}
+		}
+		#[cfg(not(target_os = "linux"))]
+		{
 		self.keyboard_state = device_query::DeviceState::new().get_keys();
+		}
 
 		for event in self.events.poll_iter() {
 			match event {
