@@ -40,4 +40,4 @@ fi
 
 export LD_LIBRARY_PATH="${PWD};${PWD}/libso"
 export MANGOHUD_CONFIG="fps_limit=60;no_display=1"
-LANG="en_US.UTF-8" LD_PRELOAD="libwal_3dxp.so" mangohud --dlsym ./main
+LC_ALL="C" LD_PRELOAD="libwal_3dxp.so" mangohud --dlsym ./main
