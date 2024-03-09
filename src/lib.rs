@@ -51,6 +51,36 @@ pub struct KeyConfig {
 	wheel_right: KeyBindings,
 }
 
+#[repr(C)]
+pub struct PortSettings {
+	unk_0: c_int,
+	errno: c_int,
+	fd: c_int,
+	unk_c: c_int,
+	portno: c_int
+/*
+	unk_14: c_int,
+	unk_18: c_int,
+	unk_1c: c_int,
+	unk_20: c_int
+*/
+}
+
+unsafe extern "C" fn portopen(
+	this: *mut PortSettings
+) -> c_int {
+	let mut path = "/dev/ttyM".to_owned();
+	path.push_str(&this.as_ref().unwrap().portno.to_string());
+
+	let path_cstr = CString::new(path.to_string()).unwrap();
+	this.as_mut().unwrap().fd = open(path_cstr.as_ptr(), 0x101902); // 0x902
+
+	if this.as_ref().unwrap().fd < 0 {
+		return 0;
+	}
+	1
+}
+
 pub static mut CONFIG: Option<Config> = None;
 pub static mut KEYCONFIG: Option<KeyConfig> = None;
 
@@ -229,6 +259,7 @@ unsafe fn init() {
 	hook::hook_symbol("_ZNK6clHaspcvbEv", adachi as *const ());
 	hook::hook_symbol("_ZNK7clHasp2cvbEv", adachi as *const ());
 	hook::hook_symbol("_ZN18clSeqBootNetThread3runEPv", adachi as *const ());
+	hook::hook_symbol("_ZN10clSerialN24openEv", portopen as *const ());
 
 	adm::init();
 	al::load_al_funcs();
