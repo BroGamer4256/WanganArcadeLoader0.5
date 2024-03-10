@@ -33,21 +33,8 @@ struct AdmChooseMode {
 }
 
 #[repr(C)]
-#[derive(Default)]
-struct AdmFBConfig {
+struct AdmIdent {
 	ident: [u8; 4], // FBCF
-}
-
-#[repr(C)]
-#[derive(Default)]
-struct AdmScreen {
-	ident: [u8; 4], // SCRN
-}
-
-#[repr(C)]
-#[derive(Default)]
-struct AdmGraphicsContext {
-	ident: [u8; 4], // CNTX
 }
 
 #[repr(C)]
@@ -69,29 +56,30 @@ extern "C" fn adm_device() -> *const AdmDevice {
 extern "C" fn adm_config() -> *const *const AdmChooseMode {
 	let adm = AdmChooseMode {
 		ident: [b'M', b'O', b'C', b'F'],
+		refresh: 60,
 		..Default::default()
 	};
 	Box::leak(Box::new(Box::leak(Box::new(adm)) as *const AdmChooseMode))
 }
 
-extern "C" fn adm_fb_config() -> *const AdmFBConfig {
-	let adm = AdmFBConfig {
+extern "C" fn adm_fb_config() -> *const AdmIdent {
+	let adm = AdmIdent {
 		ident: [b'F', b'B', b'C', b'F'],
 	};
 	let adm = Box::new(adm);
 	Box::leak(adm)
 }
 
-extern "C" fn adm_screen() -> *const AdmScreen {
-	let adm = AdmScreen {
+extern "C" fn adm_screen() -> *const AdmIdent {
+	let adm = AdmIdent {
 		ident: [b'S', b'C', b'R', b'N'],
 	};
 	let adm = Box::new(adm);
 	Box::leak(adm)
 }
 
-unsafe extern "C" fn adm_context() -> *const AdmGraphicsContext {
-	let adm = AdmGraphicsContext {
+unsafe extern "C" fn adm_context() -> *const AdmIdent {
+	let adm = AdmIdent {
 		ident: [b'C', b'N', b'T', b'X'],
 	};
 	let adm = Box::new(adm);
