@@ -19,8 +19,21 @@ pub struct Config {
 	card_emu: bool,
 	block_sudo: bool,
 	deadzone: f32,
-	width: i32,
-	height: i32,
+	width: u32,
+	height: u32,
+}
+
+// Why cant this be a trait impl? Thanks rust
+const fn default_config() -> Config {
+	Config {
+		fullscreen: false,
+		input_emu: true,
+		card_emu: true,
+		block_sudo: true,
+		deadzone: 0.01,
+		width: 640,
+		height: 480,
+	}
 }
 
 pub struct KeyConfig {
@@ -51,7 +64,7 @@ pub struct KeyConfig {
 	wheel_right: KeyBindings,
 }
 
-pub static mut CONFIG: Option<Config> = None;
+pub static mut CONFIG: Config = default_config();
 pub static mut KEYCONFIG: Option<KeyConfig> = None;
 
 pub extern "C" fn adachi() -> c_int {
@@ -63,13 +76,7 @@ unsafe extern "C" fn system(command: *const c_char) -> c_int {
 	let cstr = CStr::from_ptr(command);
 	let str = cstr.to_str().unwrap();
 
-	let block_sudo = if let Some(config) = CONFIG.as_ref() {
-		config.block_sudo
-	} else {
-		true
-	};
-
-	if !block_sudo || str.starts_with("find") {
+	if !CONFIG.block_sudo || str.starts_with("find") {
 		let command = str.replace("/tmp/", "./tmp/");
 		let command = CString::new(command).unwrap();
 
@@ -160,7 +167,9 @@ unsafe fn init() {
 	}
 
 	if let Ok(toml) = std::fs::read_to_string("config.toml") {
-		CONFIG = toml::from_str(&toml).ok();
+		if let Ok(toml) = toml::from_str(&toml) {
+			CONFIG = toml;
+		}
 	}
 
 	// Really what I should do is implement a custom serde::Deserialize for KeyBindings
@@ -233,18 +242,13 @@ unsafe fn init() {
 	adm::init();
 	al::load_al_funcs();
 
-	if let Some(config) = CONFIG.as_ref() {
-		if config.input_emu {
-			jamma::init();
-		}
-		if config.card_emu {
-			card::init();
-		}
-		if config.width != 640 || config.height != 480 {
-			res::init();
-		}
-	} else {
+	if CONFIG.input_emu {
 		jamma::init();
+	}
+	if CONFIG.card_emu {
 		card::init();
+	}
+	if CONFIG.width != 640 || CONFIG.height != 480 {
+		res::init();
 	}
 }

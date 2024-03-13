@@ -33,11 +33,6 @@ struct AdmChooseMode {
 }
 
 #[repr(C)]
-struct AdmIdent {
-	ident: [u8; 4],
-}
-
-#[repr(C)]
 struct AdmWindow {
 	ident: [u8; 4], // WNDW
 	window: PWindow,
@@ -68,24 +63,20 @@ extern "C" fn adm_fb_config() -> *const u8 {
 unsafe extern "C" fn adm_window(device: *mut AdmDevice) -> *const AdmWindow {
 	let device = device.as_mut().unwrap();
 	let monitor = Monitor::from_primary();
-	let window_mode = if let Some(config) = CONFIG.as_ref() {
-		if config.fullscreen {
-			WindowMode::FullScreen(&monitor)
-		} else {
-			WindowMode::Windowed
-		}
+	let window_mode = if CONFIG.fullscreen {
+		WindowMode::FullScreen(&monitor)
 	} else {
 		WindowMode::Windowed
 	};
 	device.glfw.window_hint(WindowHint::Resizable(false)); // Force floating on tiling window managers
-	let (width, height) = if let Some(config) = CONFIG.as_ref() {
-		(config.width as u32, config.height as u32)
-	} else {
-		(640, 480)
-	};
 	let (mut window, _) = device
 		.glfw
-		.create_window(width, height, "WanganArcadeLoader", window_mode)
+		.create_window(
+			CONFIG.width,
+			CONFIG.height,
+			"WanganArcadeLoader",
+			window_mode,
+		)
 		.unwrap();
 	WINDOW_HANDLE = Some(window.get_x11_window());
 	window.make_current();
