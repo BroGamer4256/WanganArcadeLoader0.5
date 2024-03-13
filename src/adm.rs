@@ -34,7 +34,7 @@ struct AdmChooseMode {
 
 #[repr(C)]
 struct AdmIdent {
-	ident: [u8; 4], // FBCF
+	ident: [u8; 4],
 }
 
 #[repr(C)]
@@ -49,8 +49,7 @@ extern "C" fn adm_device() -> *const AdmDevice {
 		ident: [b'D', b'E', b'V', b'I'],
 		glfw,
 	};
-	let adm = Box::new(adm);
-	Box::leak(adm)
+	Box::leak(Box::new(adm))
 }
 
 extern "C" fn adm_config() -> *const *const AdmChooseMode {
@@ -62,28 +61,8 @@ extern "C" fn adm_config() -> *const *const AdmChooseMode {
 	Box::leak(Box::new(Box::leak(Box::new(adm)) as *const AdmChooseMode))
 }
 
-extern "C" fn adm_fb_config() -> *const AdmIdent {
-	let adm = AdmIdent {
-		ident: [b'F', b'B', b'C', b'F'],
-	};
-	let adm = Box::new(adm);
-	Box::leak(adm)
-}
-
-extern "C" fn adm_screen() -> *const AdmIdent {
-	let adm = AdmIdent {
-		ident: [b'S', b'C', b'R', b'N'],
-	};
-	let adm = Box::new(adm);
-	Box::leak(adm)
-}
-
-unsafe extern "C" fn adm_context() -> *const AdmIdent {
-	let adm = AdmIdent {
-		ident: [b'C', b'N', b'T', b'X'],
-	};
-	let adm = Box::new(adm);
-	Box::leak(adm)
+extern "C" fn adm_fb_config() -> *const u8 {
+	Box::leak(Box::new(0))
 }
 
 unsafe extern "C" fn adm_window(device: *mut AdmDevice) -> *const AdmWindow {
@@ -116,12 +95,10 @@ unsafe extern "C" fn adm_window(device: *mut AdmDevice) -> *const AdmWindow {
 		ident: [b'W', b'N', b'D', b'W'],
 		window,
 	};
-	let adm = Box::new(adm);
-	let ptr = Box::leak(adm);
 
 	gl::load_gl_funcs(&device.glfw);
 
-	ptr
+	Box::leak(Box::new(adm))
 }
 
 unsafe extern "C" fn adm_swap_buffers(window: *mut AdmWindow) -> c_int {
@@ -150,8 +127,8 @@ pub unsafe fn init() {
 	hook::hook_symbol("admChooseModeConfigi", adm_config as *const ());
 	hook::hook_symbol("admModeConfigi", adachi as *const ());
 	hook::hook_symbol("admChooseFBConfigi", adm_fb_config as *const ());
-	hook::hook_symbol("admCreateScreeni", adm_screen as *const ());
-	hook::hook_symbol("admCreateGraphicsContext", adm_context as *const ());
+	hook::hook_symbol("admCreateScreeni", adachi as *const ());
+	hook::hook_symbol("admCreateGraphicsContext", adachi as *const ());
 	hook::hook_symbol("admCreateWindowi", adm_window as *const ());
 	hook::hook_symbol("admDisplayScreen", adachi as *const ());
 	hook::hook_symbol("admMakeContextCurrent", adachi as *const ());

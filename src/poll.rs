@@ -241,7 +241,7 @@ impl PollState {
 		}
 		#[cfg(not(target_os = "linux"))]
 		{
-		self.keyboard_state = device_query::DeviceState::new().get_keys();
+			self.keyboard_state = device_query::DeviceState::new().get_keys();
 		}
 
 		for event in self.events.poll_iter() {

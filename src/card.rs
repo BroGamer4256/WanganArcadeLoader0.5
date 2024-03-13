@@ -13,7 +13,6 @@ const WRITE: u8 = 0x53;
 
 pub static mut CARD_DATA: Mutex<Vec<u8>> = Mutex::new(Vec::new());
 
-// +0x06: Status
 unsafe extern "C" fn exec(card_printer: *mut u32) {
 	let has_command = card_printer.read();
 	if has_command == 0 {
