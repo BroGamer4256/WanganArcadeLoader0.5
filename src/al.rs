@@ -86,7 +86,7 @@ unsafe fn load_al_func(func: &str) {
 	if openal_module.is_null() {
 		let error = dlerror();
 		let error = CStr::from_ptr(error).to_str().unwrap();
-		panic!("{}", error);
+		panic!("{error}");
 	}
 	let real_func = dlsym(openal_module, func_str.as_ptr());
 	if real_func.is_null() {

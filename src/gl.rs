@@ -1123,7 +1123,8 @@ pub unsafe fn load_gl_funcs(glfw: &Glfw) {
 unsafe fn load_gl_func(func: &str, glfw: &Glfw) {
 	let real_func = glfw.get_proc_address_raw(func);
 	if real_func.is_null() {
-		panic!("{func} not found by GLFW");
+		println!("{func} not found by GLFW");
+		return;
 	}
 	let real_func = real_func as usize;
 
@@ -1132,6 +1133,7 @@ unsafe fn load_gl_func(func: &str, glfw: &Glfw) {
 	let func_ptr = dlsym(module, func_str.as_ptr());
 	if func_ptr.is_null() {
 		panic!("{func} not found in main");
+		return;
 	}
 
 	let real_func = real_func.to_le_bytes();
