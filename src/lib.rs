@@ -18,6 +18,7 @@ pub struct Config {
 	input_emu: bool,
 	card_emu: bool,
 	block_sudo: bool,
+	dongle: String,
 	deadzone: f32,
 	width: u32,
 	height: u32,
@@ -30,6 +31,7 @@ const fn default_config() -> Config {
 		input_emu: true,
 		card_emu: true,
 		block_sudo: true,
+		dongle: String::new(),
 		deadzone: 0.01,
 		width: 640,
 		height: 480,
@@ -66,6 +68,10 @@ pub struct KeyConfig {
 
 pub static mut CONFIG: Config = default_config();
 pub static mut KEYCONFIG: Option<KeyConfig> = None;
+
+pub extern "C" fn undachi() -> c_int {
+	false as c_int
+}
 
 pub extern "C" fn adachi() -> c_int {
 	true as c_int
@@ -159,6 +165,100 @@ unsafe extern "C" fn _ZNSt13basic_filebufIcSt11char_traitsIcEE4openEPKcSt13_Ios_
 	}
 }
 
+#[no_mangle]
+unsafe extern "C" fn _ZNSt14basic_ifstreamIcSt11char_traitsIcEEC1EPKcSt13_Ios_Openmode(
+	this: c_int,
+	filename: *const c_char,
+	mode: c_int,
+) -> *const () {
+	if let Ok(filename) = CStr::from_ptr(filename).to_str() {
+		let filename = if filename.starts_with("/tmp") {
+			CString::new(filename.replace("/tmp/", "./tmp/")).unwrap()
+		} else if filename.starts_with("/proc/bus/usb/devices") {
+			CString::new("./tmp/usb-devices").unwrap()
+		} else {
+			CString::new(filename).unwrap()
+		};
+
+		let open =
+			CString::new("_ZNSt14basic_ifstreamIcSt11char_traitsIcEEC1EPKcSt13_Ios_Openmode")
+				.unwrap();
+		let open = dlsym(RTLD_NEXT, open.as_ptr());
+		let open: extern "C" fn(c_int, *const c_char, c_int) -> *const () = transmute(open);
+		open(this, filename.as_ptr(), mode)
+	} else {
+		let open =
+			CString::new("_ZNSt14basic_ifstreamIcSt11char_traitsIcEEC1EPKcSt13_Ios_Openmode")
+				.unwrap();
+		let open = dlsym(RTLD_NEXT, open.as_ptr());
+		let open: extern "C" fn(c_int, *const c_char, c_int) -> *const () = transmute(open);
+		open(this, filename, mode)
+	}
+}
+
+static mut HASP_ID: i32 = 1;
+unsafe extern "C" fn hasp_login(_: c_int, _: c_int, id: *mut c_int) -> c_int {
+	id.write(HASP_ID);
+	HASP_ID = HASP_ID + 1;
+	0
+}
+
+unsafe extern "C" fn hasp_size(_: c_int, _: c_int, size: *mut c_int) -> c_int {
+	size.write(0xD40);
+	0
+}
+
+unsafe extern "C" fn hasp_read(
+	_: c_int,
+	_: c_int,
+	offset: c_int,
+	length: c_int,
+	buffer: *mut u8,
+) -> c_int {
+	let mut data = [0u8; 0xD40];
+	let dongle = CONFIG.dongle.as_bytes();
+	let dongle = if dongle.len() < 12 {
+		"285013501138".as_bytes()
+	} else {
+		dongle
+	};
+	data.as_mut_ptr()
+		.offset(0xD00)
+		.copy_from_nonoverlapping(dongle.as_ptr(), 12);
+	let mut crc: u8 = 0;
+	for i in 0..=0x0D {
+		crc = crc.wrapping_add(data[i]);
+	}
+	data[0x0D] = crc;
+	data[0xD3F] = std::ops::Not::not(crc);
+	crc = 0;
+	for i in 0..=62 {
+		crc = crc.wrapping_add(data[0xD00 + i]);
+	}
+	data[0xD3E] = crc;
+	data[0xD3F] = std::ops::Not::not(crc);
+
+	buffer.copy_from_nonoverlapping(data.as_ptr().offset(offset as isize), length as usize);
+	0
+}
+
+static mut ORIGINAL_CL_MAIN: Option<unsafe extern "C" fn(*mut *mut ())> = None;
+unsafe extern "C" fn cl_main(log: *mut *mut ()) {
+	ORIGINAL_CL_MAIN.unwrap()(log);
+	log.write(hook::get_symbol("_ZSt4cout"));
+}
+
+unsafe extern "C" fn get_address(clnet: *mut *mut c_int) -> c_int {
+	let local_ip = local_ip_address::local_ip().unwrap();
+	let local_ip = match local_ip {
+		std::net::IpAddr::V4(addr) => addr,
+		_ => unreachable!(),
+	};
+	let ip = i32::from_be_bytes(local_ip.octets());
+	clnet.byte_offset(0x24).read().byte_offset(0x04).write(ip);
+	ip
+}
+
 #[ctor::ctor]
 unsafe fn init() {
 	let exe = std::env::current_exe().unwrap();
@@ -235,9 +335,26 @@ unsafe fn init() {
 	};
 	KEYCONFIG = Some(keyconfig);
 
-	hook::hook_symbol("_ZNK6clHaspcvbEv", adachi as *const ());
-	hook::hook_symbol("_ZNK7clHasp2cvbEv", adachi as *const ());
-	hook::hook_symbol("_ZN18clSeqBootNetThread3runEPv", adachi as *const ());
+	// hook::hook_symbol("_ZN18clSeqBootNetThread3runEPv", adachi as *const ());
+	hook::hook_symbol("hasp_cleanup", undachi as *const ());
+	hook::hook_symbol("hasp_decrypt", undachi as *const ());
+	hook::hook_symbol("hasp_encrypt", undachi as *const ());
+	hook::hook_symbol("hasp_free", undachi as *const ());
+	hook::hook_symbol("hasp_get_rtc", undachi as *const ()); // param 2 time_t
+	hook::hook_symbol("hasp_get_sessioninfo", undachi as *const ());
+	hook::hook_symbol("hasp_get_size", hasp_size as *const ());
+	hook::hook_symbol("hasp_legacy_set_rtc", undachi as *const ());
+	hook::hook_symbol("hasp_login", hasp_login as *const ());
+	hook::hook_symbol("hasp_logout", undachi as *const ());
+	hook::hook_symbol("hasp_read", hasp_read as *const ());
+	hook::hook_symbol("hasp_write", undachi as *const ());
+
+	hook::hook_symbol("_ZNK5clNet10getAddressEv", get_address as *const ());
+
+	ORIGINAL_CL_MAIN = Some(transmute(hook::hook_symbol(
+		"_ZN6clMainC1Ev",
+		cl_main as *const (),
+	)));
 
 	adm::init();
 	al::load_al_funcs();
