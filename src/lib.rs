@@ -347,6 +347,8 @@ unsafe fn init() {
 	hook::hook_symbol("hasp_logout", undachi as *const ());
 	hook::hook_symbol("hasp_read", hasp_read as *const ());
 	hook::hook_symbol("hasp_write", undachi as *const ());
+	hook::hook_symbol("hasp_get_rtc", undachi as *const ());
+	hook::hook_symbol("hasp_hasptime_to_datetime", undachi as *const ());
 
 	hook::hook_symbol("_ZNK5clNet10getAddressEv", get_address as *const ());
 
