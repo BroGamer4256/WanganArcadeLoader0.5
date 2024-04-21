@@ -230,7 +230,7 @@ unsafe extern "C" fn hasp_read(
 		crc = crc.wrapping_add(data[i]);
 	}
 	data[0x0D] = crc;
-	data[0xD3F] = std::ops::Not::not(crc);
+	data[0x0F] = std::ops::Not::not(crc);
 	crc = 0;
 	for i in 0..=62 {
 		crc = crc.wrapping_add(data[0xD00 + i]);
