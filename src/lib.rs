@@ -339,7 +339,7 @@ unsafe fn init() {
 	hook::hook_symbol("hasp_decrypt", undachi as *const ());
 	hook::hook_symbol("hasp_encrypt", undachi as *const ());
 	hook::hook_symbol("hasp_free", undachi as *const ());
-	hook::hook_symbol("hasp_get_rtc", undachi as *const ()); // param 2 time_t
+	hook::hook_symbol("hasp_get_rtc", undachi as *const ());
 	hook::hook_symbol("hasp_get_sessioninfo", undachi as *const ());
 	hook::hook_symbol("hasp_get_size", hasp_size as *const ());
 	hook::hook_symbol("hasp_legacy_set_rtc", undachi as *const ());
