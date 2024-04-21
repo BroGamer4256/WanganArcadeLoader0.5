@@ -36,6 +36,7 @@ struct AdmChooseMode {
 struct AdmWindow {
 	ident: [u8; 4], // WNDW
 	window: PWindow,
+	fbo: u32,
 }
 
 extern "C" fn adm_device() -> *const AdmDevice {
@@ -82,18 +83,125 @@ unsafe extern "C" fn adm_window(device: *mut AdmDevice) -> *const AdmWindow {
 	window.make_current();
 	window.set_resizable(true);
 	device.glfw.set_swap_interval(SwapInterval::Sync(1));
+
+	gl::load_gl_funcs(&device.glfw);
+
+	BIND_FRAMEBUFFER = Some(transmute(
+		device.glfw.get_proc_address_raw("glBindFramebuffer"),
+	));
+	BLIT_FRAMEBUFFER = Some(transmute(
+		device.glfw.get_proc_address_raw("glBlitFramebuffer"),
+	));
+	CLEAR_BUFFER = Some(transmute(
+		device.glfw.get_proc_address_raw("glClearBufferfv"),
+	));
+
+	let mut fbo = 0;
+	let mut texture = 0;
+
+	let bind_framebuffer = BIND_FRAMEBUFFER.unwrap();
+	let gen_framebuffer: extern "C" fn(i32, *mut u32) =
+		transmute(device.glfw.get_proc_address_raw("glGenFramebuffers"));
+	let gen_texture: extern "C" fn(i32, *mut u32) =
+		transmute(device.glfw.get_proc_address_raw("glGenTextures"));
+	let bind_texture: extern "C" fn(i32, u32) =
+		transmute(device.glfw.get_proc_address_raw("glBindTexture"));
+	let tex_image: extern "C" fn(i32, i32, i32, u32, u32, i32, i32, i32, *const c_void) =
+		transmute(device.glfw.get_proc_address_raw("glTexImage2D"));
+	let framebuffer_texture: extern "C" fn(i32, i32, i32, u32, i32) =
+		transmute(device.glfw.get_proc_address_raw("glFramebufferTexture2D"));
+
+	gen_framebuffer(1, &mut fbo);
+	bind_framebuffer(0x8D40, fbo);
+
+	gen_texture(1, &mut texture);
+	bind_texture(0x0DE1, texture);
+	tex_image(
+		0x0DE1,
+		0,
+		0x1907,
+		CONFIG.width,
+		CONFIG.height,
+		0,
+		0x1907,
+		0x1401,
+		std::ptr::null(),
+	);
+
+	framebuffer_texture(0x8D40, 0x8CE0, 0x0DE1, texture, 0);
+	bind_framebuffer(0x8D40, 0);
+	bind_texture(0x0DE1, 0);
+
 	let adm = AdmWindow {
 		ident: [b'W', b'N', b'D', b'W'],
 		window,
+		fbo,
 	};
-
-	gl::load_gl_funcs(&device.glfw);
 
 	Box::leak(Box::new(adm))
 }
 
+static mut BIND_FRAMEBUFFER: Option<unsafe extern "C" fn(i32, u32)> = None;
+static mut BLIT_FRAMEBUFFER: Option<
+	unsafe extern "C" fn(i32, i32, i32, i32, i32, i32, i32, i32, i32, i32),
+> = None;
+static mut CLEAR_BUFFER: Option<unsafe extern "C" fn(i32, i32, *const f32)> = None;
 unsafe extern "C" fn adm_swap_buffers(window: *mut AdmWindow) -> c_int {
 	let window = window.as_mut().unwrap();
+	let (window_width, window_height) = window.window.get_size();
+	let window_ar = window_width as f32 / window_height as f32;
+	let ar = CONFIG.width as f32 / CONFIG.height as f32;
+
+	let (viewport_width, viewport_height, viewport_x, viewport_y) = if window_ar > ar {
+		let viewport_width: i32 = ((window_height as f32) * ar) as i32;
+		let viewport_x = ((window_width - viewport_width) as f32 / 2.0) as i32;
+		(viewport_width, window_height, viewport_x, 0)
+	} else {
+		let viewport_height = ((window_width as f32) / ar) as i32;
+		let viewport_y = ((window_height - viewport_height) as f32 / 2.0) as i32;
+		(window_width, viewport_height, 0, viewport_y)
+	};
+
+	let bind = BIND_FRAMEBUFFER.unwrap();
+	let blit = BLIT_FRAMEBUFFER.unwrap();
+	let clear = CLEAR_BUFFER.unwrap();
+
+	bind(0x8CA8, 0);
+	bind(0x8CA9, window.fbo);
+	blit(
+		0,
+		0,
+		CONFIG.width as i32,
+		CONFIG.height as i32,
+		0,
+		0,
+		CONFIG.width as i32,
+		CONFIG.height as i32,
+		0x4000,
+		0x2600,
+	);
+
+	bind(0x8D40, 0);
+	let clear_color = [0.0, 0.0, 0.0, 1.0];
+	clear(0x1800, 0, clear_color.as_ptr());
+
+	bind(0x8CA8, window.fbo);
+	bind(0x8CA9, 0);
+	blit(
+		0,
+		0,
+		CONFIG.width as i32,
+		CONFIG.height as i32,
+		viewport_x,
+		viewport_y,
+		viewport_x + viewport_width,
+		viewport_y + viewport_height,
+		0x4000,
+		0x2600,
+	);
+
+	bind(0x8D40, 0);
+
 	window.window.swap_buffers();
 
 	0

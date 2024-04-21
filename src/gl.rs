@@ -1132,7 +1132,7 @@ unsafe fn load_gl_func(func: &str, glfw: &Glfw) {
 	let func_str = CString::new(func).unwrap();
 	let func_ptr = dlsym(module, func_str.as_ptr());
 	if func_ptr.is_null() {
-		panic!("{func} not found in main");
+		println!("{func} not found in main");
 		return;
 	}
 

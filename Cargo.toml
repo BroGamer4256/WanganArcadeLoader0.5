@@ -18,7 +18,7 @@ serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
 retour = { git = "https://github.com/BroGamer4256/retour-rs.git" }
 x11 = "2.21"
-local-ip-address = "0.6.1"
+local-ip-address = "0.6"
 
 [profile.release]
 lto = true
