@@ -335,7 +335,6 @@ unsafe fn init() {
 	};
 	KEYCONFIG = Some(keyconfig);
 
-	// hook::hook_symbol("_ZN18clSeqBootNetThread3runEPv", adachi as *const ());
 	hook::hook_symbol("hasp_cleanup", undachi as *const ());
 	hook::hook_symbol("hasp_decrypt", undachi as *const ());
 	hook::hook_symbol("hasp_encrypt", undachi as *const ());
