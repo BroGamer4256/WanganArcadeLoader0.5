@@ -2,6 +2,7 @@ use libc::*;
 use poll::*;
 use std::ffi::{CStr, CString};
 use std::mem::transmute;
+use std::str::FromStr;
 
 pub mod adm;
 pub mod al;
@@ -19,6 +20,7 @@ pub struct Config {
 	card_emu: bool,
 	block_sudo: bool,
 	dongle: String,
+	local_ip: Option<String>,
 	deadzone: f32,
 	width: u32,
 	height: u32,
@@ -32,6 +34,7 @@ const fn default_config() -> Config {
 		card_emu: true,
 		block_sudo: true,
 		dongle: String::new(),
+		local_ip: None,
 		deadzone: 0.01,
 		width: 640,
 		height: 480,
@@ -249,14 +252,21 @@ unsafe extern "C" fn cl_main(log: *mut *mut ()) {
 }
 
 unsafe extern "C" fn get_address(clnet: *mut *mut c_int) -> c_int {
-	let local_ip = local_ip_address::local_ip().unwrap();
-	let local_ip = match local_ip {
-		std::net::IpAddr::V4(addr) => addr,
-		_ => unreachable!(),
-	};
-	let ip = i32::from_be_bytes(local_ip.octets());
-	clnet.byte_offset(0x24).read().byte_offset(0x04).write(ip);
-	ip
+	if let Some(local_ip) = &CONFIG.local_ip {
+		let local_ip = std::net::Ipv4Addr::from_str(&local_ip).unwrap();
+		let ip = i32::from_be_bytes(local_ip.octets());
+		clnet.byte_offset(0x24).read().byte_offset(0x04).write(ip);
+		ip
+	} else {
+		let local_ip = local_ip_address::local_ip().unwrap();
+		let local_ip = match local_ip {
+			std::net::IpAddr::V4(addr) => addr,
+			_ => unreachable!(),
+		};
+		let ip = i32::from_be_bytes(local_ip.octets());
+		clnet.byte_offset(0x24).read().byte_offset(0x04).write(ip);
+		ip
+	}
 }
 
 #[ctor::ctor]
@@ -350,7 +360,15 @@ unsafe fn init() {
 	hook::hook_symbol("hasp_get_rtc", undachi as *const ());
 	hook::hook_symbol("hasp_hasptime_to_datetime", undachi as *const ());
 
-	hook::hook_symbol("_ZNK5clNet10getAddressEv", get_address as *const ());
+	if CONFIG.local_ip.is_some() {
+		hook::hook_symbol("_ZNK5clNet10getAddressEv", get_address as *const ());
+	} else {
+		if local_ip_address::local_ip().is_ok() {
+			hook::hook_symbol("_ZNK5clNet10getAddressEv", get_address as *const ());
+		} else {
+			hook::hook_symbol("_ZN18clSeqBootNetThread3runEPv", adachi as *const ());
+		}
+	}
 
 	ORIGINAL_CL_MAIN = Some(transmute(hook::hook_symbol(
 		"_ZN6clMainC1Ev",
