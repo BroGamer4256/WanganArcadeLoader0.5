@@ -52,9 +52,6 @@ unsafe extern "C" fn handle_inputs(data: *mut u32) {
 	if sdl.is_down(&keyconfig.service) > 0.0 {
 		bits |= 0x80000000;
 	}
-	if sdl.is_down(&keyconfig.quit) > 0.0 {
-		bits |= 0x20000;
-	}
 	if sdl.is_down(&keyconfig.perspective) > 0.0 {
 		bits |= 0x40;
 	}

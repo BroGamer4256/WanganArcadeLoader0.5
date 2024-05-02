@@ -44,7 +44,6 @@ const fn default_config() -> Config {
 pub struct KeyConfig {
 	test: KeyBindings,
 	service: KeyBindings,
-	quit: KeyBindings,
 	card_insert: KeyBindings,
 
 	gear_next: KeyBindings,
@@ -78,6 +77,11 @@ pub extern "C" fn undachi() -> c_int {
 
 pub extern "C" fn adachi() -> c_int {
 	true as c_int
+}
+
+#[no_mangle]
+unsafe extern "C" fn sigaction() -> c_int {
+	0
 }
 
 #[no_mangle]
@@ -289,7 +293,6 @@ unsafe fn init() {
 	struct KeyConfigTemp {
 		test: Vec<String>,
 		service: Vec<String>,
-		quit: Vec<String>,
 		card_insert: Vec<String>,
 
 		gear_next: Vec<String>,
@@ -319,7 +322,6 @@ unsafe fn init() {
 	let keyconfig = KeyConfig {
 		test: parse_keybinding(keyconfig.test),
 		service: parse_keybinding(keyconfig.service),
-		quit: parse_keybinding(keyconfig.quit),
 		card_insert: parse_keybinding(keyconfig.card_insert),
 
 		gear_next: parse_keybinding(keyconfig.gear_next),
