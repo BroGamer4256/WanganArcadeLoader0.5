@@ -206,7 +206,7 @@ unsafe extern "C" fn _ZNSt14basic_ifstreamIcSt11char_traitsIcEEC1EPKcSt13_Ios_Op
 static mut HASP_ID: i32 = 1;
 unsafe extern "C" fn hasp_login(_: c_int, _: c_int, id: *mut c_int) -> c_int {
 	id.write(HASP_ID);
-	HASP_ID = HASP_ID + 1;
+	HASP_ID += 1;
 	0
 }
 
@@ -232,16 +232,17 @@ unsafe extern "C" fn hasp_read(
 	data.as_mut_ptr()
 		.offset(0xD00)
 		.copy_from_nonoverlapping(dongle.as_ptr(), 12);
-	let mut crc: u8 = 0;
-	for i in 0..=0x0D {
-		crc = crc.wrapping_add(data[i]);
-	}
+	let crc = data
+		.iter()
+		.take(0x0D)
+		.fold(0, |acc: u8, data| acc.wrapping_add(*data));
 	data[0x0D] = crc;
 	data[0x0F] = std::ops::Not::not(crc);
-	crc = 0;
-	for i in 0..=62 {
-		crc = crc.wrapping_add(data[0xD00 + i]);
-	}
+	let crc = data
+		.iter()
+		.skip(0xD00)
+		.take(0x3E)
+		.fold(0, |acc: u8, data| acc.wrapping_add(*data));
 	data[0xD3E] = crc;
 	data[0xD3F] = std::ops::Not::not(crc);
 
@@ -364,12 +365,10 @@ unsafe fn init() {
 
 	if CONFIG.local_ip.is_some() {
 		hook::hook_symbol("_ZNK5clNet10getAddressEv", get_address as *const ());
+	} else if local_ip_address::local_ip().is_ok() {
+		hook::hook_symbol("_ZNK5clNet10getAddressEv", get_address as *const ());
 	} else {
-		if local_ip_address::local_ip().is_ok() {
-			hook::hook_symbol("_ZNK5clNet10getAddressEv", get_address as *const ());
-		} else {
-			hook::hook_symbol("_ZN18clSeqBootNetThread3runEPv", adachi as *const ());
-		}
+		hook::hook_symbol("_ZN18clSeqBootNetThread3runEPv", adachi as *const ());
 	}
 
 	ORIGINAL_CL_MAIN = Some(transmute(hook::hook_symbol(
