@@ -84,59 +84,38 @@ unsafe extern "C" fn adm_window(device: *mut AdmDevice) -> *const AdmWindow {
 	window.set_resizable(true);
 	device.glfw.set_swap_interval(SwapInterval::Sync(1));
 
-	gl::load_gl_funcs(&device.glfw);
-
-	BIND_FRAMEBUFFER = Some(transmute(
-		device.glfw.get_proc_address_raw("glBindFramebuffer"),
-	));
-	BLIT_FRAMEBUFFER = Some(transmute(
-		device.glfw.get_proc_address_raw("glBlitFramebuffer"),
-	));
-	CLEAR_BUFFER = Some(transmute(
-		device.glfw.get_proc_address_raw("glClearBufferfv"),
-	));
+	opengl::load_gl_funcs(&device.glfw);
+	gl::load_with(|s| device.glfw.get_proc_address_raw(s));
 
 	let mut fbo = 0;
 	let mut texture = 0;
+	gl::GenFramebuffers(1, &mut fbo);
+	gl::BindFramebuffer(gl::FRAMEBUFFER, fbo);
 
-	let bind_framebuffer = BIND_FRAMEBUFFER.unwrap();
-	let gen_framebuffer: extern "C" fn(i32, *mut u32) =
-		transmute(device.glfw.get_proc_address_raw("glGenFramebuffers"));
-	let gen_texture: extern "C" fn(i32, *mut u32) =
-		transmute(device.glfw.get_proc_address_raw("glGenTextures"));
-	let bind_texture: extern "C" fn(i32, u32) =
-		transmute(device.glfw.get_proc_address_raw("glBindTexture"));
-	let tex_image: extern "C" fn(i32, i32, i32, u32, u32, i32, i32, i32, *const c_void) =
-		transmute(device.glfw.get_proc_address_raw("glTexImage2D"));
-	let framebuffer_texture: extern "C" fn(i32, i32, i32, u32, i32) =
-		transmute(device.glfw.get_proc_address_raw("glFramebufferTexture2D"));
-
-	gen_framebuffer(1, &mut fbo);
-	bind_framebuffer(GL_FRAMEBUFFER, fbo);
-
-	gen_texture(1, &mut texture);
-	bind_texture(GL_TEXTURE_2D, texture);
-	tex_image(
-		GL_TEXTURE_2D,
+	gl::GenTextures(1, &mut texture);
+	gl::BindTexture(gl::TEXTURE_2D, texture);
+	gl::TexImage2D(
+		gl::TEXTURE_2D,
 		0,
-		GL_RGB,
-		CONFIG.width,
-		CONFIG.height,
+		gl::RGB as i32,
+		CONFIG.width as i32,
+		CONFIG.height as i32,
 		0,
-		GL_RGB,
-		GL_UNSIGNED_BYTE,
+		gl::RGB,
+		gl::UNSIGNED_BYTE,
 		std::ptr::null(),
 	);
-
-	framebuffer_texture(
-		GL_FRAMEBUFFER,
-		GL_COLOR_ATTACHMENT0,
-		GL_TEXTURE_2D,
+	gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+	gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+	gl::FramebufferTexture2D(
+		gl::FRAMEBUFFER,
+		gl::COLOR_ATTACHMENT0,
+		gl::TEXTURE_2D,
 		texture,
 		0,
 	);
-	bind_framebuffer(GL_FRAMEBUFFER, 0);
-	bind_texture(GL_TEXTURE_2D, 0);
+	gl::BindTexture(gl::TEXTURE_2D, 0);
+	gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
 
 	let adm = AdmWindow {
 		ident: [b'W', b'N', b'D', b'W'],
@@ -146,23 +125,6 @@ unsafe extern "C" fn adm_window(device: *mut AdmDevice) -> *const AdmWindow {
 
 	Box::leak(Box::new(adm))
 }
-
-static mut BIND_FRAMEBUFFER: Option<unsafe extern "C" fn(i32, u32)> = None;
-static mut BLIT_FRAMEBUFFER: Option<
-	unsafe extern "C" fn(i32, i32, i32, i32, i32, i32, i32, i32, i32, i32),
-> = None;
-static mut CLEAR_BUFFER: Option<unsafe extern "C" fn(i32, i32, *const f32)> = None;
-
-const GL_TEXTURE_2D: i32 = 0x0DE1;
-const GL_UNSIGNED_BYTE: i32 = 0x1401;
-const GL_COLOR: i32 = 0x1800;
-const GL_RGB: i32 = 0x1907;
-const GL_NEAREST: i32 = 0x2600;
-const GL_COLOR_BUFFER_BIT: i32 = 0x4000;
-const GL_READ_FRAMEBUFFER: i32 = 0x8CA8;
-const GL_DRAW_FRAMEBUFFER: i32 = 0x8CA9;
-const GL_COLOR_ATTACHMENT0: i32 = 0x8CE0;
-const GL_FRAMEBUFFER: i32 = 0x8D40;
 
 unsafe extern "C" fn adm_swap_buffers(window: *mut AdmWindow) -> c_int {
 	let window = window.as_mut().unwrap();
@@ -180,13 +142,12 @@ unsafe extern "C" fn adm_swap_buffers(window: *mut AdmWindow) -> c_int {
 		(window_width, viewport_height, 0, viewport_y)
 	};
 
-	let bind = BIND_FRAMEBUFFER.unwrap();
-	let blit = BLIT_FRAMEBUFFER.unwrap();
-	let clear = CLEAR_BUFFER.unwrap();
 
-	bind(GL_READ_FRAMEBUFFER, 0);
-	bind(GL_DRAW_FRAMEBUFFER, window.fbo);
-	blit(
+
+	// Upscaling + black bars
+	gl::BindFramebuffer(gl::READ_FRAMEBUFFER, 0);
+	gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, window.fbo);
+	gl::BlitFramebuffer(
 		0,
 		0,
 		CONFIG.width as i32,
@@ -195,17 +156,16 @@ unsafe extern "C" fn adm_swap_buffers(window: *mut AdmWindow) -> c_int {
 		0,
 		CONFIG.width as i32,
 		CONFIG.height as i32,
-		GL_COLOR_BUFFER_BIT,
-		GL_NEAREST,
+		gl::COLOR_BUFFER_BIT,
+		gl::NEAREST,
 	);
 
-	bind(GL_FRAMEBUFFER, 0);
-	let clear_color = [0.0, 0.0, 0.0, 1.0];
-	clear(GL_COLOR, 0, clear_color.as_ptr());
+	gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+	gl::Clear(gl::COLOR_BUFFER_BIT);
 
-	bind(GL_READ_FRAMEBUFFER, window.fbo);
-	bind(GL_DRAW_FRAMEBUFFER, 0);
-	blit(
+	gl::BindFramebuffer(gl::READ_FRAMEBUFFER, window.fbo);
+	gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, 0);
+	gl::BlitFramebuffer(
 		0,
 		0,
 		CONFIG.width as i32,
@@ -214,11 +174,11 @@ unsafe extern "C" fn adm_swap_buffers(window: *mut AdmWindow) -> c_int {
 		viewport_y,
 		viewport_x + viewport_width,
 		viewport_y + viewport_height,
-		GL_COLOR_BUFFER_BIT,
-		GL_NEAREST,
+		gl::COLOR_BUFFER_BIT,
+		gl::NEAREST,
 	);
 
-	bind(GL_FRAMEBUFFER, 0);
+	gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
 
 	window.window.swap_buffers();
 

@@ -7,9 +7,9 @@ use std::str::FromStr;
 pub mod adm;
 pub mod al;
 pub mod card;
-pub mod gl;
 pub mod hook;
 pub mod jamma;
+pub mod opengl;
 pub mod poll;
 pub mod res;
 
