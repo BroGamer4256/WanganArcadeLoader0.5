@@ -40,7 +40,7 @@ jobs:
 
         # build
         cargo build --release --target i586-unknown-linux-gnu
-        cargo clippy --release --target i586-unknown-linux-gnu -- -A clippy::not_unsafe_ptr_arg_deref -A clippy::missing_safety_doc -A clippy::implicit_saturating_sub --no-deps
+        cargo clippy --release --target i586-unknown-linux-gnu -- -A clippy::not_unsafe_ptr_arg_deref -A clippy::missing_safety_doc -A clippy::implicit_saturating_sub -A clippy::missing_transmute_annotations --no-deps
 
         mkdir -p out/
         cp target/i586-unknown-linux-gnu/release/libwal_3dxp.so out/

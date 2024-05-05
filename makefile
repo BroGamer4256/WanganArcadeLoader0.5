@@ -2,7 +2,7 @@ all:
 	@PKG_CONFIG_SYSROOT_DIR=/usr/lib32/pkgconfig/ cargo b --release --target i586-unknown-linux-gnu
 
 check:
-	@PKG_CONFIG_SYSROOT_DIR=/usr/lib32/pkgconfig/ cargo clippy --release --target i586-unknown-linux-gnu -- -A clippy::not_unsafe_ptr_arg_deref -A clippy::missing_safety_doc -A clippy::implicit_saturating_sub --no-deps
+	@PKG_CONFIG_SYSROOT_DIR=/usr/lib32/pkgconfig/ cargo clippy --release --target i586-unknown-linux-gnu -- -A clippy::not_unsafe_ptr_arg_deref -A clippy::missing_safety_doc -A clippy::implicit_saturating_sub -A clippy::missing_transmute_annotations --no-deps
 
 dist-no-7z: all
 	@mkdir -p out/

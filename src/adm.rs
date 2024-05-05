@@ -11,12 +11,6 @@ extern "C" fn adm_version() -> *const c_char {
 
 pub static mut WINDOW_HANDLE: Option<*mut c_void> = None;
 
-#[repr(C)]
-struct AdmDevice {
-	ident: [u8; 4], // DEVI
-	glfw: Glfw,
-}
-
 #[allow(non_snake_case)]
 #[repr(C)]
 #[derive(Default)]
@@ -35,17 +29,9 @@ struct AdmChooseMode {
 #[repr(C)]
 struct AdmWindow {
 	ident: [u8; 4], // WNDW
+	glfw: Glfw,
 	window: PWindow,
 	fbo: u32,
-}
-
-extern "C" fn adm_device() -> *const AdmDevice {
-	let glfw = glfw::init(glfw::fail_on_errors).unwrap();
-	let adm = AdmDevice {
-		ident: [b'D', b'E', b'V', b'I'],
-		glfw,
-	};
-	Box::leak(Box::new(adm))
 }
 
 extern "C" fn adm_config() -> *const *const AdmChooseMode {
@@ -61,17 +47,16 @@ extern "C" fn adm_fb_config() -> *const u8 {
 	Box::leak(Box::new(0))
 }
 
-unsafe extern "C" fn adm_window(device: *mut AdmDevice) -> *const AdmWindow {
-	let device = device.as_mut().unwrap();
+unsafe extern "C" fn adm_window() -> *const AdmWindow {
+	let mut glfw = glfw::init(glfw::fail_on_errors).unwrap();
 	let monitor = Monitor::from_primary();
 	let window_mode = if CONFIG.fullscreen {
 		WindowMode::FullScreen(&monitor)
 	} else {
 		WindowMode::Windowed
 	};
-	device.glfw.window_hint(WindowHint::Resizable(false)); // Force floating on tiling window managers
-	let (mut window, _) = device
-		.glfw
+	glfw.window_hint(WindowHint::Resizable(false)); // Force floating on tiling window managers
+	let (mut window, _) = glfw
 		.create_window(
 			CONFIG.width,
 			CONFIG.height,
@@ -82,10 +67,10 @@ unsafe extern "C" fn adm_window(device: *mut AdmDevice) -> *const AdmWindow {
 	WINDOW_HANDLE = Some(window.get_x11_window());
 	window.make_current();
 	window.set_resizable(true);
-	device.glfw.set_swap_interval(SwapInterval::Sync(1));
+	glfw.set_swap_interval(SwapInterval::Sync(1));
 
-	opengl::load_gl_funcs(&device.glfw);
-	gl::load_with(|s| device.glfw.get_proc_address_raw(s));
+	opengl::load_gl_funcs(&glfw);
+	gl::load_with(|s| glfw.get_proc_address_raw(s));
 
 	let mut fbo = 0;
 	let mut texture = 0;
@@ -119,6 +104,7 @@ unsafe extern "C" fn adm_window(device: *mut AdmDevice) -> *const AdmWindow {
 
 	let adm = AdmWindow {
 		ident: [b'W', b'N', b'D', b'W'],
+		glfw,
 		window,
 		fbo,
 	};
@@ -126,8 +112,8 @@ unsafe extern "C" fn adm_window(device: *mut AdmDevice) -> *const AdmWindow {
 	Box::leak(Box::new(adm))
 }
 
-unsafe extern "C" fn adm_swap_buffers(window: *mut AdmWindow) -> c_int {
-	let window = window.as_mut().unwrap();
+unsafe extern "C" fn adm_swap_buffers(window_ptr: *mut AdmWindow) -> c_int {
+	let window = window_ptr.as_mut().unwrap();
 	let (window_width, window_height) = window.window.get_size();
 	let window_ar = window_width as f32 / window_height as f32;
 	let ar = CONFIG.width as f32 / CONFIG.height as f32;
@@ -181,6 +167,12 @@ unsafe extern "C" fn adm_swap_buffers(window: *mut AdmWindow) -> c_int {
 	gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
 
 	window.window.swap_buffers();
+	window.glfw.poll_events();
+	if window.window.should_close() {
+		let window = window_ptr.read().window;
+		drop(window);
+		exit(0);
+	}
 
 	0
 }
@@ -200,7 +192,7 @@ pub unsafe fn init() {
 	hook::hook_symbol("admShutdown", adachi as *const ());
 	hook::hook_symbol("admGetString", adm_version as *const ());
 	hook::hook_symbol("admGetNumDevices", adachi as *const ());
-	hook::hook_symbol("admInitDevicei", adm_device as *const ());
+	hook::hook_symbol("admInitDevicei", adachi as *const ());
 	hook::hook_symbol("admChooseModeConfigi", adm_config as *const ());
 	hook::hook_symbol("admModeConfigi", adachi as *const ());
 	hook::hook_symbol("admChooseFBConfigi", adm_fb_config as *const ());

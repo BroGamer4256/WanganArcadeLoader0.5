@@ -258,7 +258,7 @@ unsafe extern "C" fn cl_main(log: *mut *mut ()) {
 
 unsafe extern "C" fn get_address(clnet: *mut *mut c_int) -> c_int {
 	if let Some(local_ip) = &CONFIG.local_ip {
-		let local_ip = std::net::Ipv4Addr::from_str(&local_ip).unwrap();
+		let local_ip = std::net::Ipv4Addr::from_str(local_ip).unwrap();
 		let ip = i32::from_be_bytes(local_ip.octets());
 		clnet.byte_offset(0x24).read().byte_offset(0x04).write(ip);
 		ip
@@ -363,9 +363,7 @@ unsafe fn init() {
 	hook::hook_symbol("hasp_get_rtc", undachi as *const ());
 	hook::hook_symbol("hasp_hasptime_to_datetime", undachi as *const ());
 
-	if CONFIG.local_ip.is_some() {
-		hook::hook_symbol("_ZNK5clNet10getAddressEv", get_address as *const ());
-	} else if local_ip_address::local_ip().is_ok() {
+	if CONFIG.local_ip.is_some() || local_ip_address::local_ip().is_ok() {
 		hook::hook_symbol("_ZNK5clNet10getAddressEv", get_address as *const ());
 	} else {
 		hook::hook_symbol("_ZN18clSeqBootNetThread3runEPv", adachi as *const ());
