@@ -47,23 +47,23 @@ extern "C" fn adm_fb_config() -> *const u8 {
 	Box::leak(Box::new(0))
 }
 
-unsafe extern "C" fn adm_window() -> *const AdmWindow {
+unsafe extern "C" fn adm_window() -> *mut AdmWindow {
 	let mut glfw = glfw::init(glfw::fail_on_errors).unwrap();
-	let monitor = Monitor::from_primary();
-	let window_mode = if CONFIG.fullscreen {
-		WindowMode::FullScreen(&monitor)
-	} else {
-		WindowMode::Windowed
-	};
 	glfw.window_hint(WindowHint::Resizable(false)); // Force floating on tiling window managers
-	let (mut window, _) = glfw
-		.create_window(
+	let (mut window, _) = glfw.with_primary_monitor(|glfw, m| {
+		let window_mode = if CONFIG.fullscreen && m.is_some() {
+			WindowMode::FullScreen(m.unwrap())
+		} else {
+			WindowMode::Windowed
+		};
+		glfw.create_window(
 			CONFIG.width,
 			CONFIG.height,
 			"WanganArcadeLoader",
 			window_mode,
 		)
-		.unwrap();
+		.unwrap()
+	});
 	WINDOW_HANDLE = Some(window.get_x11_window());
 	window.make_current();
 	window.set_resizable(true);
@@ -184,6 +184,47 @@ unsafe extern "C" fn del_sprite_manager(this: *const c_void) {
 	let cl_app = CL_APP_INSTANCE.unwrap()();
 	if CL_APP_IS_MAIN_THREAD.unwrap()(cl_app) {
 		ORIGINAL_DEL_SPRITE_MANAGER.unwrap()(this);
+	} else {
+		let thread_manager = CL_MAIN_INSTANCE.read().byte_offset(0x40).read();
+		let current = THREAD_MANAGER_CURRENT.unwrap()(thread_manager);
+		CALL_FROM_MAIN_THREAD.unwrap()(
+			current,
+			del_sprite_manager as *const _,
+			this,
+		);
+	}
+}
+
+static mut THREAD_MANAGER_CURRENT: Option<extern "C" fn(*const c_void) -> *const c_void> = None;
+static mut CL_MAIN_INSTANCE: *const *const *const c_void = std::ptr::null();
+static mut CALL_FROM_MAIN_THREAD: Option<
+	extern "C" fn(*const c_void, *const fn(*const c_void), *const c_void),
+> = None;
+static mut ORIGINAL_SAVE_IMAGE: Option<extern "C" fn(*const c_void, *const c_void)> = None;
+unsafe extern "C" fn save_image(render_buffer: *const c_void, filepath: *const c_void) {
+	let cl_app = CL_APP_INSTANCE.unwrap()();
+	if CL_APP_IS_MAIN_THREAD.unwrap()(cl_app) {
+		ORIGINAL_SAVE_IMAGE.unwrap()(render_buffer, filepath);
+	} else {
+		let args = Box::new((render_buffer, filepath));
+		let thread_manager = CL_MAIN_INSTANCE.read().byte_offset(0x40).read();
+		let current = THREAD_MANAGER_CURRENT.unwrap()(thread_manager);
+		CALL_FROM_MAIN_THREAD.unwrap()(
+			current,
+			save_image_main as *const _,
+			transmute(args.as_ref()),
+		);
+	}
+}
+
+unsafe extern "C" fn save_image_main(args: *const c_void) {
+	let args: &(*const c_void, *const c_void) = transmute(args);
+	let (render_buffer, filepath) = *args;
+	let cl_app = CL_APP_INSTANCE.unwrap()();
+	if CL_APP_IS_MAIN_THREAD.unwrap()(cl_app) {
+		ORIGINAL_SAVE_IMAGE.unwrap()(render_buffer, filepath);
+	} else {
+		panic!("Not main thread!");
 	}
 }
 
@@ -215,5 +256,18 @@ pub unsafe fn init() {
 	)));
 	CL_APP_IS_MAIN_THREAD = Some(transmute(hook::get_symbol(
 		"_ZN11clAppSystem12isMainThreadEv",
+	)));
+	THREAD_MANAGER_CURRENT = Some(transmute(hook::get_symbol(
+		"_ZN17clNPThreadManager7currentEv",
+	)));
+	CL_MAIN_INSTANCE = transmute(hook::get_symbol(
+		"_ZN11teSingletonI10teSequenceI6clMainEE11sm_instanceE",
+	));
+	CALL_FROM_MAIN_THREAD = transmute(hook::get_symbol(
+		"_ZN10clNPThread26callFunctionFromMainThreadEPFvPvES0_",
+	));
+	ORIGINAL_SAVE_IMAGE = Some(transmute(hook::hook_symbol(
+		"_ZN14clRenderBuffer9saveImageEPKc",
+		save_image as *const (),
 	)));
 }

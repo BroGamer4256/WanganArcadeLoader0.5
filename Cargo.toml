@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 [dependencies]
 ctor = "0.2"
 device_query = "2.0"
-glfw = "0.54"
+glfw = "0.55"
 libc = "0.2"
 phf = { version = "0.11", features = ["macros"] }
 region = "3.0"
