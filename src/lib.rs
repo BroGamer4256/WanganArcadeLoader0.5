@@ -274,6 +274,14 @@ unsafe extern "C" fn get_address(clnet: *mut *mut c_int) -> c_int {
 	}
 }
 
+#[repr(u8)]
+#[derive(Clone, Copy)]
+pub enum GameVersion {
+	Unknown = 0,
+	Japan = 1,
+	Export = 2,
+}
+
 #[ctor::ctor]
 unsafe fn init() {
 	let exe = std::env::current_exe().unwrap();
@@ -385,5 +393,32 @@ unsafe fn init() {
 	}
 	if CONFIG.width != 640 || CONFIG.height != 480 {
 		res::init();
+	}
+
+	let object = std::fs::read("main").unwrap();
+	let hash = sha256::digest(object);
+	let verison = match hash.as_str() {
+		"2e6591153d7e599437465f736a42e27b01a3b56c881bee58365fb21d0678b1f6" => GameVersion::Japan,
+		"3dc7cc6174806fe4ea6687625c233ed5468e0225e3bcce15e225b25b2934be5b" => GameVersion::Export,
+		_ => GameVersion::Unknown,
+	};
+	for plugin in glob::glob("plugins/*.so").unwrap() {
+		let plugin_name = plugin.unwrap().to_string_lossy().to_string();
+		let plugin = CString::new(plugin_name.clone()).unwrap();
+		let plugin = dlopen(plugin.as_ptr(), RTLD_LAZY);
+		if plugin.is_null() {
+			let error = dlerror();
+			let error = CStr::from_ptr(error).to_string_lossy().to_string();
+			panic!("{plugin_name} could not be loaded:  {error}");
+		}
+		let init = CString::new("init").unwrap();
+		let init = dlsym(plugin, init.as_ptr());
+		if init.is_null() {
+			let error = dlerror();
+			let error = CStr::from_ptr(error).to_string_lossy().to_string();
+			panic!("init does not exist in {plugin_name}: {error}");
+		}
+		let init: fn(GameVersion) = transmute(init);
+		init(verison);
 	}
 }
