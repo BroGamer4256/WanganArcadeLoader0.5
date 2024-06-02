@@ -1,3 +1,4 @@
+#![allow(improper_ctypes_definitions)]
 use libc::*;
 use std::ffi::CString;
 
