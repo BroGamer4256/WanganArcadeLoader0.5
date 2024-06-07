@@ -38,6 +38,17 @@ if [ ! -f ./data/shader/.recompiled ]; then
 	done
 fi
 
+# Fix a dump with broken soft links
+for f in ./libso/*; do
+	file_type=$(file -b "$f")
+	if [[ "$file_type" =~ ASCII ]]; then
+		link=$(cat "$f")
+		rm "$f"
+		ln -s "$link" "$f"
+		echo "$f"
+	fi
+done
+
 export LD_LIBRARY_PATH="${PWD};${PWD}/libso"
 export MANGOHUD_CONFIG="fps_limit=60;no_display=1"
 LC_ALL="C" LD_PRELOAD="libwal_3dxp.so" mangohud --dlsym ./main
