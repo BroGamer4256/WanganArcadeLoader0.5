@@ -14,8 +14,12 @@ pub unsafe fn get_symbol(symbol: &str) -> *mut () {
 }
 
 pub unsafe fn hook(address: *mut (), func: *const ()) -> *const () {
-	let hook = retour::RawDetour::new(address, func).unwrap();
-	hook.enable().unwrap();
+	let Ok(hook) = retour::RawDetour::new(address, func) else {
+		return std::ptr::null();
+	};
+	let Ok(_) = hook.enable() else {
+		return std::ptr::null();
+	};
 	let trampoline = hook.trampoline() as *const ();
 	std::mem::forget(hook);
 	trampoline

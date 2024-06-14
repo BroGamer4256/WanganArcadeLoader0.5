@@ -260,7 +260,13 @@ unsafe extern "C" fn get_address(clnet: *mut *mut c_int) -> c_int {
 	if let Some(local_ip) = &CONFIG.local_ip {
 		let local_ip = std::net::Ipv4Addr::from_str(local_ip).unwrap();
 		let ip = i32::from_be_bytes(local_ip.octets());
-		clnet.byte_offset(0x24).read().byte_offset(0x04).write(ip);
+		let net = clnet.byte_offset(0x24).read();
+		let net = if net.is_null() {
+			clnet.byte_offset(0x1C).read()
+		} else {
+			net
+		};
+		net.byte_offset(0x04).write(ip);
 		ip
 	} else {
 		let local_ip = local_ip_address::local_ip().unwrap();
@@ -269,7 +275,14 @@ unsafe extern "C" fn get_address(clnet: *mut *mut c_int) -> c_int {
 			_ => unreachable!(),
 		};
 		let ip = i32::from_be_bytes(local_ip.octets());
-		clnet.byte_offset(0x24).read().byte_offset(0x04).write(ip);
+		let net = clnet.byte_offset(0x24).read();
+		let net = if net.is_null() {
+			clnet.byte_offset(0x1C).read()
+		} else {
+			net
+		};
+		net.byte_offset(0x04).write(ip);
+		net.byte_offset(0x04).write(ip);
 		ip
 	}
 }
@@ -278,8 +291,15 @@ unsafe extern "C" fn get_address(clnet: *mut *mut c_int) -> c_int {
 #[derive(Clone, Copy)]
 pub enum GameVersion {
 	Unknown = 0,
-	Japan = 1,
-	Export = 2,
+	DxpJP = 1,
+	DxpEN = 2,
+	DxpCN = 3,
+	DxJP = 4,
+	DxEN = 5,
+	DxCN = 6,
+	BaseJP = 7,
+	BaseEN = 8,
+	BaseCN = 9,
 }
 
 #[ctor::ctor]
@@ -398,8 +418,11 @@ unsafe fn init() {
 	let object = std::fs::read("main").unwrap();
 	let hash = sha256::digest(object);
 	let version = match hash.as_str() {
-		"2e6591153d7e599437465f736a42e27b01a3b56c881bee58365fb21d0678b1f6" => GameVersion::Japan,
-		"3dc7cc6174806fe4ea6687625c233ed5468e0225e3bcce15e225b25b2934be5b" => GameVersion::Export,
+		"2e6591153d7e599437465f736a42e27b01a3b56c881bee58365fb21d0678b1f6" => GameVersion::DxpJP,
+		"3dc7cc6174806fe4ea6687625c233ed5468e0225e3bcce15e225b25b2934be5b" => GameVersion::DxpEN,
+		"05ec5ddadab6b9d8db27b746c3de4adb7f6e725dd23c0eb42421e2e0e8d1dbb4" => GameVersion::DxEN,
+		"0574cf963d8dd94788f247e65cc4da7e47f4b366588d1309fe869f4264a26475" => GameVersion::BaseEN,
+		"8ab0bd22a03bdd36e6ede00c5a21c84cef4f614166b19bd30706671f57226da2" => GameVersion::BaseJP,
 		_ => {
 			println!("Unknwon game version {hash}");
 			GameVersion::Unknown

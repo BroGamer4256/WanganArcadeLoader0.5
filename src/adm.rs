@@ -254,6 +254,75 @@ unsafe extern "C" fn create_texture_handle_main(args: *const c_void) {
 	}
 }
 
+static mut ORIGINAL_SET_TEXTURE: Option<extern "C" fn(*const c_void, i32, i32) -> i32> = None;
+unsafe extern "C" fn set_texture(this: *const c_void, a1: i32, a2: i32) -> i32 {
+	let cl_app = CL_APP_INSTANCE.unwrap()();
+	if CL_APP_IS_MAIN_THREAD.unwrap()(cl_app) {
+		ORIGINAL_SET_TEXTURE.unwrap()(this, a1, a2)
+	} else {
+		let args = Box::new((this, a1, a2));
+		let thread_manager = CL_MAIN_INSTANCE.read().byte_offset(0x40).read();
+		let current = THREAD_MANAGER_CURRENT.unwrap()(thread_manager);
+		CALL_FROM_MAIN_THREAD.unwrap()(
+			current,
+			set_texture_main as *const _,
+			transmute(args.as_ref()),
+		);
+		1
+	}
+}
+
+unsafe extern "C" fn set_texture_main(args: *const c_void) {
+	let args: &(*const c_void, i32, i32) = transmute(args);
+	let (this, a1, a2) = *args;
+	let cl_app = CL_APP_INSTANCE.unwrap()();
+	if CL_APP_IS_MAIN_THREAD.unwrap()(cl_app) {
+		ORIGINAL_SET_TEXTURE.unwrap()(this, a1, a2);
+	} else {
+		panic!("Not main thread!");
+	}
+}
+
+static mut ORIGINAL_SET_TEXTURE_REGION: Option<
+	extern "C" fn(*const c_void, i32, i32, i32, i32, i32, i32, *const c_void) -> i32,
+> = None;
+unsafe extern "C" fn set_texture_region(
+	this: *const c_void,
+	a1: i32,
+	a2: i32,
+	a3: i32,
+	a4: i32,
+	a5: i32,
+	a6: i32,
+	a7: *const c_void,
+) -> i32 {
+	let cl_app = CL_APP_INSTANCE.unwrap()();
+	if CL_APP_IS_MAIN_THREAD.unwrap()(cl_app) {
+		ORIGINAL_SET_TEXTURE_REGION.unwrap()(this, a1, a2, a3, a4, a5, a6, a7)
+	} else {
+		let args = Box::new((this, a1, a2, a3, a4, a5, a6, a7));
+		let thread_manager = CL_MAIN_INSTANCE.read().byte_offset(0x40).read();
+		let current = THREAD_MANAGER_CURRENT.unwrap()(thread_manager);
+		CALL_FROM_MAIN_THREAD.unwrap()(
+			current,
+			set_texture_region_main as *const _,
+			transmute(args.as_ref()),
+		);
+		1
+	}
+}
+
+unsafe extern "C" fn set_texture_region_main(args: *const c_void) {
+	let args: &(*const c_void, i32, i32, i32, i32, i32, i32, *const c_void) = transmute(args);
+	let (this, a1, a2, a3, a4, a5, a6, a7) = *args;
+	let cl_app = CL_APP_INSTANCE.unwrap()();
+	if CL_APP_IS_MAIN_THREAD.unwrap()(cl_app) {
+		ORIGINAL_SET_TEXTURE_REGION.unwrap()(this, a1, a2, a3, a4, a5, a6, a7);
+	} else {
+		panic!("Not main thread!");
+	}
+}
+
 pub unsafe fn init() {
 	hook::hook_symbol("admvt_setup", adachi as *const ());
 	hook::hook_symbol("admShutdown", adachi as *const ());
@@ -299,5 +368,13 @@ pub unsafe fn init() {
 	ORIGINAL_CREATE_TEXTURE_HANDLE = Some(transmute(hook::hook_symbol(
 		"_ZN24clAlchemyTextureAccessor19createTextureHandleEii",
 		create_texture_handle as *const (),
+	)));
+	ORIGINAL_SET_TEXTURE = Some(transmute(hook::hook_symbol(
+		"_ZN3Gap3Gfx19igAGLEVisualContext10setTextureEii",
+		set_texture as *const (),
+	)));
+	ORIGINAL_SET_TEXTURE_REGION = Some(transmute(hook::hook_symbol(
+		"_ZN3Gap3Gfx19igAGLEVisualContext16setTextureRegionEiiiiiiPNS0_7igImageE",
+		set_texture_region as *const (),
 	)));
 }
