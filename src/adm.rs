@@ -236,10 +236,21 @@ unsafe extern "C" fn create_texture_handle(this: *const c_void, a1: i32, a2: i32
 		let current = THREAD_MANAGER_CURRENT.unwrap()(thread_manager);
 		CALL_FROM_MAIN_THREAD.unwrap()(
 			current,
-			create_texture_handle as *const _,
+			create_texture_handle_main as *const _,
 			transmute(args.as_ref()),
 		);
 		1
+	}
+}
+
+unsafe extern "C" fn create_texture_handle_main(args: *const c_void) {
+	let args: &(*const c_void, i32, i32) = transmute(args);
+	let (this, a1, a2) = *args;
+	let cl_app = CL_APP_INSTANCE.unwrap()();
+	if CL_APP_IS_MAIN_THREAD.unwrap()(cl_app) {
+		ORIGINAL_CREATE_TEXTURE_HANDLE.unwrap()(this, a1, a2);
+	} else {
+		panic!("Not main thread!");
 	}
 }
 

@@ -397,10 +397,13 @@ unsafe fn init() {
 
 	let object = std::fs::read("main").unwrap();
 	let hash = sha256::digest(object);
-	let verison = match hash.as_str() {
+	let version = match hash.as_str() {
 		"2e6591153d7e599437465f736a42e27b01a3b56c881bee58365fb21d0678b1f6" => GameVersion::Japan,
 		"3dc7cc6174806fe4ea6687625c233ed5468e0225e3bcce15e225b25b2934be5b" => GameVersion::Export,
-		_ => GameVersion::Unknown,
+		_ => {
+			println!("Unknwon game version {hash}");
+			GameVersion::Unknown
+		}
 	};
 	for plugin in glob::glob("plugins/*.so").unwrap() {
 		let plugin_name = plugin.unwrap().to_string_lossy().to_string();
@@ -419,6 +422,6 @@ unsafe fn init() {
 			panic!("init does not exist in {plugin_name}: {error}");
 		}
 		let init: fn(GameVersion) = transmute(init);
-		init(verison);
+		init(version);
 	}
 }
