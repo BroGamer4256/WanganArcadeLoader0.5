@@ -187,11 +187,7 @@ unsafe extern "C" fn del_sprite_manager(this: *const c_void) {
 	} else {
 		let thread_manager = CL_MAIN_INSTANCE.read().byte_offset(0x40).read();
 		let current = THREAD_MANAGER_CURRENT.unwrap()(thread_manager);
-		CALL_FROM_MAIN_THREAD.unwrap()(
-			current,
-			del_sprite_manager as *const _,
-			this,
-		);
+		CALL_FROM_MAIN_THREAD.unwrap()(current, del_sprite_manager as *const _, this);
 	}
 }
 
@@ -225,6 +221,25 @@ unsafe extern "C" fn save_image_main(args: *const c_void) {
 		ORIGINAL_SAVE_IMAGE.unwrap()(render_buffer, filepath);
 	} else {
 		panic!("Not main thread!");
+	}
+}
+
+static mut ORIGINAL_CREATE_TEXTURE_HANDLE: Option<extern "C" fn(*const c_void, i32, i32) -> i32> =
+	None;
+unsafe extern "C" fn create_texture_handle(this: *const c_void, a1: i32, a2: i32) -> i32 {
+	let cl_app = CL_APP_INSTANCE.unwrap()();
+	if CL_APP_IS_MAIN_THREAD.unwrap()(cl_app) {
+		ORIGINAL_CREATE_TEXTURE_HANDLE.unwrap()(this, a1, a2)
+	} else {
+		let args = Box::new((this, a1, a2));
+		let thread_manager = CL_MAIN_INSTANCE.read().byte_offset(0x40).read();
+		let current = THREAD_MANAGER_CURRENT.unwrap()(thread_manager);
+		CALL_FROM_MAIN_THREAD.unwrap()(
+			current,
+			create_texture_handle as *const _,
+			transmute(args.as_ref()),
+		);
+		1
 	}
 }
 
@@ -269,5 +284,9 @@ pub unsafe fn init() {
 	ORIGINAL_SAVE_IMAGE = Some(transmute(hook::hook_symbol(
 		"_ZN14clRenderBuffer9saveImageEPKc",
 		save_image as *const (),
+	)));
+	ORIGINAL_CREATE_TEXTURE_HANDLE = Some(transmute(hook::hook_symbol(
+		"_ZN24clAlchemyTextureAccessor19createTextureHandleEii",
+		create_texture_handle as *const (),
 	)));
 }
