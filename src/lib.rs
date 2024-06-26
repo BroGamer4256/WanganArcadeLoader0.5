@@ -19,7 +19,6 @@ pub struct Config {
 	input_emu: bool,
 	card_emu: bool,
 	block_sudo: bool,
-	tty_replace: bool,
 	dongle: String,
 	local_ip: Option<String>,
 	deadzone: f32,
@@ -34,7 +33,6 @@ const fn default_config() -> Config {
 		input_emu: true,
 		card_emu: true,
 		block_sudo: true,
-		tty_replace: false,
 		dongle: String::new(),
 		local_ip: None,
 		deadzone: 0.01,
@@ -112,24 +110,6 @@ unsafe extern "C" fn system(command: *const c_char) -> c_int {
 		dbg!(str);
 		0
 	}
-}
-
-#[no_mangle]
-unsafe extern "C" fn open(filename: *const c_char, flags: c_int) -> c_int {
-	let filename = CStr::from_ptr(filename).to_str().unwrap();
-	let filename = if filename.starts_with("/tmp") {
-		CString::new(filename.replace("/tmp/", "./tmp/")).unwrap()
-	} else if filename.starts_with("/dev/tty") && CONFIG.tty_replace {
-		let port_number = filename.chars().last().unwrap();
-		CString::new(format!("/dev/ttyS{port_number}")).unwrap()
-	} else {
-		CString::new(filename).unwrap()
-	};
-
-	let open = CString::new("open").unwrap();
-	let open = dlsym(RTLD_NEXT, open.as_ptr());
-	let open: extern "C" fn(*const c_char, c_int) -> c_int = transmute(open);
-	open(filename.as_ptr(), flags)
 }
 
 #[no_mangle]
@@ -410,7 +390,6 @@ unsafe fn init() {
 	hook::hook_symbol("hasp_write", undachi as *const ());
 	hook::hook_symbol("hasp_get_rtc", undachi as *const ());
 	hook::hook_symbol("hasp_hasptime_to_datetime", undachi as *const ());
-	hook::hook_symbol("_ZNK6clHasp7isAvailEv", adachi as *const ());
 
 	if CONFIG.local_ip.is_some() || local_ip_address::local_ip().is_ok() {
 		hook::hook_symbol("_ZNK5clNet10getAddressEv", get_address as *const ());

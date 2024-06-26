@@ -2,7 +2,6 @@ fullscreen = false
 input_emu = true
 card_emu = true
 block_sudo = true
-tty_replace = false
 dongle = "285013501138"
 # 1% deadzone
 deadzone = 0.01
