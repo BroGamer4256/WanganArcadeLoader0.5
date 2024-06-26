@@ -390,6 +390,7 @@ unsafe fn init() {
 	hook::hook_symbol("hasp_write", undachi as *const ());
 	hook::hook_symbol("hasp_get_rtc", undachi as *const ());
 	hook::hook_symbol("hasp_hasptime_to_datetime", undachi as *const ());
+	hook::hook_symbol("_ZNK6clHasp7isAvailEv", adachi as *const ());
 
 	if CONFIG.local_ip.is_some() || local_ip_address::local_ip().is_ok() {
 		hook::hook_symbol("_ZNK5clNet10getAddressEv", get_address as *const ());
