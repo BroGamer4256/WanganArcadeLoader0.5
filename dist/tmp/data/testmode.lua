@@ -50,7 +50,7 @@ CloseFri = 96
 CloseSat = 96
 
 -- Flag
-WithinSelen = 0
+WithinSelen = 1
 -- DEVELOPE
 CardVersion = 0
 TargetVersion = 0
