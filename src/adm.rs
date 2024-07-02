@@ -129,7 +129,7 @@ unsafe extern "C" fn adm_swap_buffers(window_ptr: *mut AdmWindow) -> c_int {
 		let (viewport_width, viewport_height, viewport_x, viewport_y) = if window_ar > ar {
 			let viewport_width: i32 = ((window_height as f32) * ar) as i32;
 			let viewport_x = ((window_width - viewport_width) as f32 / 2.0) as i32;
-			dbg!((viewport_width, window_height, viewport_x, 0))
+			(viewport_width, window_height, viewport_x, 0)
 		} else {
 			let viewport_height = ((window_width as f32) / ar) as i32;
 			let viewport_y = ((window_height - viewport_height) as f32 / 2.0) as i32;
