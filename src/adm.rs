@@ -114,57 +114,63 @@ unsafe extern "C" fn adm_window() -> *mut AdmWindow {
 
 unsafe extern "C" fn adm_swap_buffers(window_ptr: *mut AdmWindow) -> c_int {
 	let window = window_ptr.as_mut().unwrap();
-	let (window_width, window_height) = window.window.get_size();
-	let window_ar = window_width as f32 / window_height as f32;
-	let ar = CONFIG.width as f32 / CONFIG.height as f32;
 
-	let (viewport_width, viewport_height, viewport_x, viewport_y) = if window_ar > ar {
-		let viewport_width: i32 = ((window_height as f32) * ar) as i32;
-		let viewport_x = ((window_width - viewport_width) as f32 / 2.0) as i32;
-		(viewport_width, window_height, viewport_x, 0)
-	} else {
-		let viewport_height = ((window_width as f32) / ar) as i32;
-		let viewport_y = ((window_height - viewport_height) as f32 / 2.0) as i32;
-		(window_width, viewport_height, 0, viewport_y)
-	};
+	let main = CString::new("main").unwrap();
+	let main = dlopen(main.as_ptr(), RTLD_LAZY);
+	let graphics = CString::new("_ZN11teSingletonI10clGraphicsE11sm_instanceE").unwrap();
+	let graphics = dlsym(main, graphics.as_ptr()) as *mut *mut u8;
 
+	// Upscaling + black bars only if the game isnt using a saved frame
+	if graphics.read().byte_offset(0x54).read() == 1 {
+		let (window_width, window_height) = window.window.get_size();
+		let window_ar = window_width as f32 / window_height as f32;
+		let ar = CONFIG.width as f32 / CONFIG.height as f32;
+	
+		let (viewport_width, viewport_height, viewport_x, viewport_y) = if window_ar > ar {
+			let viewport_width: i32 = ((window_height as f32) * ar) as i32;
+			let viewport_x = ((window_width - viewport_width) as f32 / 2.0) as i32;
+			dbg!((viewport_width, window_height, viewport_x, 0))
+		} else {
+			let viewport_height = ((window_width as f32) / ar) as i32;
+			let viewport_y = ((window_height - viewport_height) as f32 / 2.0) as i32;
+			(window_width, viewport_height, 0, viewport_y)
+		};
 
+		gl::BindFramebuffer(gl::READ_FRAMEBUFFER, 0);
+		gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, window.fbo);
+		gl::BlitFramebuffer(
+			0,
+			0,
+			CONFIG.width as i32,
+			CONFIG.height as i32,
+			0,
+			0,
+			CONFIG.width as i32,
+			CONFIG.height as i32,
+			gl::COLOR_BUFFER_BIT,
+			gl::NEAREST,
+		);
 
-	// Upscaling + black bars
-	gl::BindFramebuffer(gl::READ_FRAMEBUFFER, 0);
-	gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, window.fbo);
-	gl::BlitFramebuffer(
-		0,
-		0,
-		CONFIG.width as i32,
-		CONFIG.height as i32,
-		0,
-		0,
-		CONFIG.width as i32,
-		CONFIG.height as i32,
-		gl::COLOR_BUFFER_BIT,
-		gl::NEAREST,
-	);
+		gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+		gl::Clear(gl::COLOR_BUFFER_BIT);
 
-	gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-	gl::Clear(gl::COLOR_BUFFER_BIT);
+		gl::BindFramebuffer(gl::READ_FRAMEBUFFER, window.fbo);
+		gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, 0);
+		gl::BlitFramebuffer(
+			0,
+			0,
+			CONFIG.width as i32,
+			CONFIG.height as i32,
+			viewport_x,
+			viewport_y,
+			viewport_x + viewport_width,
+			viewport_y + viewport_height,
+			gl::COLOR_BUFFER_BIT,
+			gl::NEAREST,
+		);
 
-	gl::BindFramebuffer(gl::READ_FRAMEBUFFER, window.fbo);
-	gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, 0);
-	gl::BlitFramebuffer(
-		0,
-		0,
-		CONFIG.width as i32,
-		CONFIG.height as i32,
-		viewport_x,
-		viewport_y,
-		viewport_x + viewport_width,
-		viewport_y + viewport_height,
-		gl::COLOR_BUFFER_BIT,
-		gl::NEAREST,
-	);
-
-	gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+		gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+	}
 
 	window.window.swap_buffers();
 	window.glfw.poll_events();
