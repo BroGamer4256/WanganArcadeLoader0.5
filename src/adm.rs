@@ -115,17 +115,30 @@ unsafe extern "C" fn adm_window() -> *mut AdmWindow {
 unsafe extern "C" fn adm_swap_buffers(window_ptr: *mut AdmWindow) -> c_int {
 	let window = window_ptr.as_mut().unwrap();
 
-	let main = CString::new("main").unwrap();
-	let main = dlopen(main.as_ptr(), RTLD_LAZY);
-	let graphics = CString::new("_ZN11teSingletonI10clGraphicsE11sm_instanceE").unwrap();
-	let graphics = dlsym(main, graphics.as_ptr()) as *mut *mut u8;
+	let graphics = hook::get_symbol("_ZN11teSingletonI10clGraphicsE11sm_instanceE") as *mut *mut u8;
+	let graphics = graphics.read();
 
 	// Upscaling + black bars only if the game isnt using a saved frame
-	if graphics.read().byte_offset(0x54).read() == 1 {
+	let should_blit = if graphics.byte_offset(0x54).read() == 1 {
+		true
+	} else {
+		let graphics = graphics as *mut *mut u32;
+		let buffer = graphics.byte_offset(0x0C).read();
+		let buffer = if buffer.is_null() {
+			graphics.byte_offset(0x08).read()
+		} else {
+			buffer
+		};
+
+		// If frame is saved dont blit
+		buffer.byte_offset(0x04).read() == 0
+	};
+
+	if should_blit {
 		let (window_width, window_height) = window.window.get_size();
 		let window_ar = window_width as f32 / window_height as f32;
 		let ar = CONFIG.width as f32 / CONFIG.height as f32;
-	
+
 		let (viewport_width, viewport_height, viewport_x, viewport_y) = if window_ar > ar {
 			let viewport_width: i32 = ((window_height as f32) * ar) as i32;
 			let viewport_x = ((window_width - viewport_width) as f32 / 2.0) as i32;
