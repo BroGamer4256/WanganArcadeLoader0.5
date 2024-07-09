@@ -115,23 +115,27 @@ unsafe extern "C" fn adm_window() -> *mut AdmWindow {
 unsafe extern "C" fn adm_swap_buffers(window_ptr: *mut AdmWindow) -> c_int {
 	let window = window_ptr.as_mut().unwrap();
 
-	let graphics = hook::get_symbol("_ZN11teSingletonI10clGraphicsE11sm_instanceE") as *mut *mut u8;
+	let graphics = hook::get_symbol("_ZN11teSingletonI10clGraphicsE11sm_instanceE") as *mut *mut u16;
 	let graphics = graphics.read();
 
 	// Upscaling + black bars only if the game isnt using a saved frame
-	let should_blit = if graphics.byte_offset(0x54).read() == 1 {
-		true
+	let should_blit = if GAME_VERSION.is_3() {
+		graphics.byte_offset(0x48).read() != 0
 	} else {
-		let graphics = graphics as *mut *mut u32;
-		let buffer = graphics.byte_offset(0x0C).read();
-		let buffer = if buffer.is_null() {
-			graphics.byte_offset(0x08).read()
+		if graphics.byte_offset(0x54).read() != 0 {
+			true
 		} else {
-			buffer
-		};
+			let graphics = graphics as *mut *mut u32;
+			let buffer = graphics.byte_offset(0x0C).read();
+			let buffer = if buffer.is_null() {
+				graphics.byte_offset(0x08).read()
+			} else {
+				buffer
+			};
 
-		// If frame is saved dont blit
-		buffer.byte_offset(0x04).read() == 0
+			// If frame is saved dont blit
+			buffer.byte_offset(0x04).read() == 0
+		}
 	};
 
 	if should_blit {

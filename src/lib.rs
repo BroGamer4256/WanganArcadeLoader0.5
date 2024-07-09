@@ -70,6 +70,7 @@ pub struct KeyConfig {
 
 pub static mut CONFIG: Config = default_config();
 pub static mut KEYCONFIG: Option<KeyConfig> = None;
+pub static mut GAME_VERSION: GameVersion = GameVersion::Unknown;
 
 pub extern "C" fn undachi() -> c_int {
 	false as c_int
@@ -302,6 +303,29 @@ pub enum GameVersion {
 	BaseCN = 9,
 }
 
+impl GameVersion {
+	fn is_3(&self) -> bool {
+		match self {
+			Self::BaseJP | Self::BaseEN | Self::BaseCN => true,
+			_ => false
+		}
+	}
+
+	fn is_3dx(&self) -> bool {
+		match self {
+			Self::DxJP | Self::DxEN | Self::DxCN => true,
+			_ => false
+		}
+	}
+
+	fn is_3dxp(&self) -> bool {
+		match self {
+			Self::DxpJP | Self::DxpEN | Self::DxpCN => true,
+			_ => false
+		}
+	}
+}
+
 #[ctor::ctor]
 unsafe fn init() {
 	let exe = std::env::current_exe().unwrap();
@@ -429,6 +453,7 @@ unsafe fn init() {
 			GameVersion::Unknown
 		}
 	};
+	GAME_VERSION = version;
 	for plugin in glob::glob("plugins/*.so").unwrap() {
 		let plugin_name = plugin.unwrap().to_string_lossy().to_string();
 		let plugin = CString::new(plugin_name.clone()).unwrap();
