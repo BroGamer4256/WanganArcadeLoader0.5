@@ -328,11 +328,6 @@ impl GameVersion {
 
 #[ctor::ctor]
 unsafe fn init() {
-	let exe = std::env::current_exe().unwrap();
-	if !exe.ends_with("main") {
-		panic!("Not 3DX+");
-	}
-
 	if let Ok(toml) = std::fs::read_to_string("config.toml") {
 		if let Ok(toml) = toml::from_str(&toml) {
 			CONFIG = toml;

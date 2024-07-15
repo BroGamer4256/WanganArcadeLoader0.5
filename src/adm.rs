@@ -115,7 +115,8 @@ unsafe extern "C" fn adm_window() -> *mut AdmWindow {
 unsafe extern "C" fn adm_swap_buffers(window_ptr: *mut AdmWindow) -> c_int {
 	let window = window_ptr.as_mut().unwrap();
 
-	let graphics = hook::get_symbol("_ZN11teSingletonI10clGraphicsE11sm_instanceE") as *mut *mut u16;
+	let graphics =
+		hook::get_symbol("_ZN11teSingletonI10clGraphicsE11sm_instanceE") as *mut *mut u16;
 	let graphics = graphics.read();
 
 	// Upscaling + black bars only if the game isnt using a saved frame
@@ -202,6 +203,12 @@ unsafe extern "C" fn adm_swap_buffers(window_ptr: *mut AdmWindow) -> c_int {
 
 static mut CL_APP_INSTANCE: Option<extern "C" fn() -> *const c_void> = None;
 static mut CL_APP_IS_MAIN_THREAD: Option<extern "C" fn(*const c_void) -> bool> = None;
+static mut CL_MAIN_INSTANCE: *const *const *const c_void = std::ptr::null();
+static mut THREAD_MANAGER_CURRENT: Option<extern "C" fn(*const c_void) -> *const c_void> = None;
+static mut CALL_FROM_MAIN_THREAD: Option<
+	extern "C" fn(*const c_void, *const fn(*const c_void), *const c_void),
+> = None;
+
 static mut ORIGINAL_DEL_SPRITE_MANAGER: Option<extern "C" fn(*const c_void)> = None;
 unsafe extern "C" fn del_sprite_manager(this: *const c_void) {
 	let cl_app = CL_APP_INSTANCE.unwrap()();
@@ -214,11 +221,6 @@ unsafe extern "C" fn del_sprite_manager(this: *const c_void) {
 	}
 }
 
-static mut THREAD_MANAGER_CURRENT: Option<extern "C" fn(*const c_void) -> *const c_void> = None;
-static mut CL_MAIN_INSTANCE: *const *const *const c_void = std::ptr::null();
-static mut CALL_FROM_MAIN_THREAD: Option<
-	extern "C" fn(*const c_void, *const fn(*const c_void), *const c_void),
-> = None;
 static mut ORIGINAL_SAVE_IMAGE: Option<extern "C" fn(*const c_void, *const c_void)> = None;
 unsafe extern "C" fn save_image(render_buffer: *const c_void, filepath: *const c_void) {
 	let cl_app = CL_APP_INSTANCE.unwrap()();
@@ -365,25 +367,27 @@ pub unsafe fn init() {
 	hook::hook_symbol("admGetDeviceAttribi", adachi as *const ());
 	hook::hook_symbol("admSwapBuffers", adm_swap_buffers as *const ());
 	hook::hook_symbol("admSetMonitorGamma", adachi as *const ());
-	ORIGINAL_DEL_SPRITE_MANAGER = Some(transmute(hook::hook_symbol(
-		"_ZN15clSpriteManagerD1Ev",
-		del_sprite_manager as *const (),
-	)));
+
 	CL_APP_INSTANCE = Some(transmute(hook::get_symbol(
 		"_ZN11clAppSystem11getInstanceEv",
 	)));
 	CL_APP_IS_MAIN_THREAD = Some(transmute(hook::get_symbol(
 		"_ZN11clAppSystem12isMainThreadEv",
 	)));
-	THREAD_MANAGER_CURRENT = Some(transmute(hook::get_symbol(
-		"_ZN17clNPThreadManager7currentEv",
-	)));
 	CL_MAIN_INSTANCE = transmute(hook::get_symbol(
 		"_ZN11teSingletonI10teSequenceI6clMainEE11sm_instanceE",
 	));
+	THREAD_MANAGER_CURRENT = Some(transmute(hook::get_symbol(
+		"_ZN17clNPThreadManager7currentEv",
+	)));
 	CALL_FROM_MAIN_THREAD = transmute(hook::get_symbol(
 		"_ZN10clNPThread26callFunctionFromMainThreadEPFvPvES0_",
 	));
+
+	ORIGINAL_DEL_SPRITE_MANAGER = Some(transmute(hook::hook_symbol(
+		"_ZN15clSpriteManagerD1Ev",
+		del_sprite_manager as *const (),
+	)));
 	ORIGINAL_SAVE_IMAGE = Some(transmute(hook::hook_symbol(
 		"_ZN14clRenderBuffer9saveImageEPKc",
 		save_image as *const (),
