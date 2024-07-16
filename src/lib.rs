@@ -288,40 +288,84 @@ unsafe extern "C" fn get_address(clnet: *mut *mut c_int) -> c_int {
 	}
 }
 
-#[repr(u8)]
+#[repr(C)]
+pub struct RomInfo {
+	name: [u8; 32],
+	region: [u8; 32],
+	release_type: [u8; 32],
+	date: [u8; 32],
+	time: [u8; 32],
+	revision: c_int,
+	revision_name: [u8; 32],
+}
+
+impl Into<GameVersion> for &RomInfo {
+	fn into(self) -> GameVersion {
+		let revision_name = CStr::from_bytes_until_nul(&self.revision_name);
+		let Ok(revision_name) = revision_name else {
+			return GameVersion::Unknown;
+		};
+		let Ok(revision_name) = revision_name.to_str() else {
+			return GameVersion::Unknown;
+		};
+
+		match revision_name {
+			"WM3100-1-NA-DAT0-A70" => GameVersion::WM3_JP_A70,
+			"WM3100-3-NA-DAT0-A70" => GameVersion::WM3_US_A70,
+			"W3X100-4-NA-DAT0-A20" => GameVersion::W3X_US_A20,
+			"W3P100-1-NA-DAT0-B02" => GameVersion::W3P_JP_B02,
+			"W3P100-2-NA-DAT0-B02" => GameVersion::W3P_US_B02,
+			_ => {
+				eprintln!("Unknwon game revision: {revision_name}");
+				GameVersion::Unknown
+			}
+		}
+	}
+}
+
+#[repr(u32)]
 #[derive(Clone, Copy)]
+#[allow(non_camel_case_types)]
 pub enum GameVersion {
 	Unknown = 0,
-	DxpJP = 1,
-	DxpEN = 2,
-	DxpCN = 3,
-	DxJP = 4,
-	DxEN = 5,
-	DxCN = 6,
-	BaseJP = 7,
-	BaseEN = 8,
-	BaseCN = 9,
+	WM3_JP_A70 = 1 << 0,
+	WM3_US_A70 = 1 << 1,
+	WM3_CN_A70 = 1 << 2,
+	W3X_JP_A20 = 1 << 3,
+	W3X_US_A20 = 1 << 4,
+	W3X_CN_A20 = 1 << 5,
+	W3P_JP_A16 = 1 << 6,
+	W3P_US_A16 = 1 << 7,
+	W3P_CN_A16 = 1 << 8,
+	W3P_JP_B02 = 1 << 9,
+	W3P_US_B02 = 1 << 10,
+	W3P_CN_B02 = 1 << 11,
 }
 
 impl GameVersion {
-	fn is_3(&self) -> bool {
+	fn is_wm3(&self) -> bool {
 		match self {
-			Self::BaseJP | Self::BaseEN | Self::BaseCN => true,
-			_ => false
+			Self::WM3_JP_A70 | Self::WM3_US_A70 | Self::WM3_CN_A70 => true,
+			_ => false,
 		}
 	}
 
-	fn is_3dx(&self) -> bool {
+	fn is_w3x(&self) -> bool {
 		match self {
-			Self::DxJP | Self::DxEN | Self::DxCN => true,
-			_ => false
+			Self::W3X_JP_A20 | Self::W3X_US_A20 | Self::W3X_CN_A20 => true,
+			_ => false,
 		}
 	}
 
-	fn is_3dxp(&self) -> bool {
+	fn is_w3p(&self) -> bool {
 		match self {
-			Self::DxpJP | Self::DxpEN | Self::DxpCN => true,
-			_ => false
+			Self::W3P_JP_A16
+			| Self::W3P_US_A16
+			| Self::W3P_CN_A16
+			| Self::W3P_JP_B02
+			| Self::W3P_US_B02
+			| Self::W3P_CN_B02 => true,
+			_ => false,
 		}
 	}
 }
@@ -435,19 +479,9 @@ unsafe fn init() {
 		res::init();
 	}
 
-	let object = std::fs::read("main").unwrap();
-	let hash = sha256::digest(object);
-	let version = match hash.as_str() {
-		"2e6591153d7e599437465f736a42e27b01a3b56c881bee58365fb21d0678b1f6" => GameVersion::DxpJP,
-		"3dc7cc6174806fe4ea6687625c233ed5468e0225e3bcce15e225b25b2934be5b" => GameVersion::DxpEN,
-		"05ec5ddadab6b9d8db27b746c3de4adb7f6e725dd23c0eb42421e2e0e8d1dbb4" => GameVersion::DxEN,
-		"0574cf963d8dd94788f247e65cc4da7e47f4b366588d1309fe869f4264a26475" => GameVersion::BaseEN,
-		"8ab0bd22a03bdd36e6ede00c5a21c84cef4f614166b19bd30706671f57226da2" => GameVersion::BaseJP,
-		_ => {
-			println!("Unknwon game version {hash}");
-			GameVersion::Unknown
-		}
-	};
+	let rom_info = hook::get_symbol("gRomInfo") as *const RomInfo;
+	let rom_info = rom_info.as_ref().unwrap();
+	let version = rom_info.into();
 	GAME_VERSION = version;
 	for plugin in glob::glob("plugins/*.so").unwrap() {
 		let plugin_name = plugin.unwrap().to_string_lossy().to_string();
