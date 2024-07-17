@@ -46,6 +46,13 @@ for f in ./libso/*; do
 		rm "$f"
 		ln -s "$link" "$f"
 		echo "$f"
+	elif [[ "$file_type" =~ data ]]; then
+		header=$(cat "$f" | cut -c -8)
+		if [[ "$header" =~ IntxLNK ]]; then
+			link=$(cat "$f" | tr -d '\0' | cut -c 9-)
+			rm "$f"
+			ln -s "$link" "$f"
+		fi
 	fi
 done
 
