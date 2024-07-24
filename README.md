@@ -1,7 +1,7 @@
 ## Required Packages
 ### Arch Linux
 ```
-yay -S nvidia-cg-toolkit mangohud lib32-glibc lib32-gcc-libs lib32-libx11 lib32-libxcb lib32-libpulse lib32-alsa-lib lib32-libxau lib32-libxdmcp lib32-sndio lib32-libbsd lib32-libmd lib32-mangohud
+paru -Sy nvidia-cg-toolkit mangohud lib32-glibc lib32-gcc-libs lib32-libx11 lib32-libxcb lib32-libpulse lib32-alsa-lib lib32-libxau lib32-libxdmcp lib32-sndio lib32-libbsd lib32-libmd lib32-mangohud
 ```
 ### Debian/Ubuntu/Kali
 ```
