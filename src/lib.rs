@@ -12,12 +12,15 @@ pub mod jamma;
 pub mod opengl;
 pub mod poll;
 pub mod res;
+pub mod card_redir;
 
 #[derive(serde::Deserialize)]
 pub struct Config {
 	fullscreen: bool,
 	input_emu: bool,
 	card_emu: bool,
+	redir_card: bool,
+	card_device: String,
 	block_sudo: bool,
 	dongle: String,
 	local_ip: Option<String>,
@@ -32,6 +35,8 @@ const fn default_config() -> Config {
 		fullscreen: false,
 		input_emu: true,
 		card_emu: true,
+		redir_card: false,
+		card_device: String::new(),
 		block_sudo: true,
 		dongle: String::new(),
 		local_ip: None,
@@ -474,6 +479,16 @@ unsafe fn init() {
 	}
 	if CONFIG.card_emu {
 		card::init();
+	}
+	if CONFIG.redir_card && CONFIG.card_device.is_empty(){
+		println!("Path for card redirect is not specified!, please check config.toml");
+		card_redir::init();
+	}
+	if CONFIG.redir_card && !CONFIG.card_device.is_empty(){
+		card_redir::init();
+	}
+	if CONFIG.redir_card && CONFIG.card_emu {
+		panic!("Invalid configuation, both options conflict, either set redir_card or card_emu to true.")
 	}
 	if CONFIG.width != 640 || CONFIG.height != 480 {
 		res::init();

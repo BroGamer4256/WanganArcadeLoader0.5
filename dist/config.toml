@@ -1,6 +1,8 @@
 fullscreen = false
 input_emu = true
 card_emu = true
+redir_card = false
+card_device = "/dev/ttyM0"
 block_sudo = true
 dongle = "285013501138"
 # 1% deadzone
