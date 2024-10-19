@@ -464,7 +464,7 @@ pub enum GameRegion {
 	EN2 = 2,
 	EN3 = 3,
 	EN4 = 4,
-	Unkown,
+	Unknown,
 }
 
 #[repr(C)]
