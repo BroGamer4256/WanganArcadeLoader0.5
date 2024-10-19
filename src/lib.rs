@@ -480,7 +480,7 @@ const fn default_gameversion() -> GameVersion {
 	GameVersion {
 		major: GameMajor::Unknown,
 		minor: GameMinor::Unknown,
-		region: GameRegion::Unkown,
+		region: GameRegion::Unknown,
 		revision: 0,
 	}
 }
