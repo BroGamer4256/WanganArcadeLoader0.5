@@ -14,16 +14,26 @@ pub mod poll;
 pub mod res;
 
 #[derive(serde::Deserialize)]
+pub struct FileRedirect {
+	from: String,
+	to: String,
+	flags: Option<u32>,
+}
+
+#[derive(serde::Deserialize)]
 pub struct Config {
 	fullscreen: bool,
 	input_emu: bool,
 	card_emu: bool,
 	block_sudo: bool,
+	ignore_custom_ioctls: bool,
 	dongle: String,
 	local_ip: Option<String>,
 	deadzone: f32,
 	width: u32,
 	height: u32,
+
+	file_redirect: Vec<FileRedirect>,
 }
 
 // Why cant this be a trait impl? Thanks rust
@@ -33,11 +43,13 @@ const fn default_config() -> Config {
 		input_emu: true,
 		card_emu: true,
 		block_sudo: true,
+		ignore_custom_ioctls: true,
 		dongle: String::new(),
 		local_ip: None,
 		deadzone: 0.01,
 		width: 640,
 		height: 480,
+		file_redirect: vec![],
 	}
 }
 
@@ -126,6 +138,52 @@ unsafe extern "C" fn fopen(filename: *const c_char, mode: *const c_char) -> *con
 	let fopen = dlsym(RTLD_NEXT, fopen.as_ptr());
 	let fopen: extern "C" fn(*const c_char, *const c_char) -> *const () = transmute(fopen);
 	fopen(filename.as_ptr(), mode)
+}
+
+#[no_mangle]
+unsafe extern "C" fn open(filename: *const c_char, flags: u32) -> *const () {
+	let filename = CStr::from_ptr(filename).to_str().unwrap();
+	let redirect = CONFIG
+		.file_redirect
+		.iter()
+		.filter(|redirect| redirect.from == filename)
+		.next();
+
+	let filename = if let Some(redirect) = redirect {
+		CString::new(redirect.to.clone()).unwrap()
+	} else if filename.starts_with("/tmp") {
+		CString::new(filename.replace("/tmp/", "./tmp/")).unwrap()
+	} else {
+		CString::new(filename).unwrap()
+	};
+
+	let flags = if let Some(redirect) = redirect {
+		if let Some(flags) = redirect.flags {
+			flags
+		} else {
+			flags
+		}
+	} else {
+		flags
+	};
+
+	let open = CString::new("open").unwrap();
+	let open = dlsym(RTLD_NEXT, open.as_ptr());
+	let open: extern "C" fn(*const c_char, u32) -> *const () = transmute(open);
+	open(filename.as_ptr(), flags)
+}
+
+#[no_mangle]
+unsafe extern "C" fn ioctl(fd: i32, op: u32, arg: *const c_void) -> i32 {
+	let ioctl = CString::new("ioctl").unwrap();
+	let ioctl = dlsym(RTLD_NEXT, ioctl.as_ptr());
+	let ioctl: extern "C" fn(i32, u32, *const c_void) -> i32 = transmute(ioctl);
+	let res = ioctl(fd, op, arg);
+	if (op == 0x5463 || op == 0x5464) && CONFIG.ignore_custom_ioctls {
+		0
+	} else {
+		res
+	}
 }
 
 #[no_mangle]
