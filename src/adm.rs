@@ -120,7 +120,7 @@ unsafe extern "C" fn adm_swap_buffers(window_ptr: *mut AdmWindow) -> c_int {
 	let graphics = graphics.read();
 
 	// Upscaling + black bars only if the game isnt using a saved frame
-	let should_blit = if GAME_VERSION.is_wm3() {
+	let should_blit = if GAME_VERSION.major == GameMajor::WM3 {
 		graphics.byte_offset(0x48).read() != 0
 	} else {
 		if graphics.byte_offset(0x54).read() != 0 {

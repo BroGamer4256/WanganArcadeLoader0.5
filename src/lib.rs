@@ -1,3 +1,4 @@
+#![allow(static_mut_refs)]
 use libc::*;
 use poll::*;
 use std::ffi::{CStr, CString};
@@ -82,7 +83,7 @@ pub struct KeyConfig {
 
 pub static mut CONFIG: Config = default_config();
 pub static mut KEYCONFIG: Option<KeyConfig> = None;
-pub static mut GAME_VERSION: GameVersion = GameVersion::Unknown;
+pub static mut GAME_VERSION: GameVersion = default_gameversion();
 
 pub extern "C" fn undachi() -> c_int {
 	false as c_int
@@ -143,7 +144,7 @@ unsafe extern "C" fn fopen(filename: *const c_char, mode: *const c_char) -> *con
 #[no_mangle]
 unsafe extern "C" fn open(filename: *const c_char, flags: u32) -> *const () {
 	let filename = CStr::from_ptr(filename).to_str().unwrap();
-	let redirect = CONFIG
+	let redirect = &CONFIG
 		.file_redirect
 		.iter()
 		.filter(|redirect| redirect.from == filename)
@@ -361,70 +362,126 @@ impl Into<GameVersion> for &RomInfo {
 	fn into(self) -> GameVersion {
 		let revision_name = CStr::from_bytes_until_nul(&self.revision_name);
 		let Ok(revision_name) = revision_name else {
-			return GameVersion::Unknown;
+			return default_gameversion();
 		};
 		let Ok(revision_name) = revision_name.to_str() else {
-			return GameVersion::Unknown;
+			return default_gameversion();
 		};
 
-		match revision_name {
-			"WM3100-1-NA-DAT0-A70" => GameVersion::WM3_JP_A70,
-			"WM3100-3-NA-DAT0-A70" => GameVersion::WM3_US_A70,
-			"W3X100-4-NA-DAT0-A20" => GameVersion::W3X_US_A20,
-			"W3P100-1-NA-DAT0-B02" => GameVersion::W3P_JP_B02,
-			"W3P100-2-NA-DAT0-B02" => GameVersion::W3P_US_B02,
+		let mut parts = revision_name.split('-');
+		let Some(next) = parts.next() else {
+			eprintln!("Unknwon game revision: {revision_name}");
+			return default_gameversion();
+		};
+		let major = match next {
+			"WM3100" => GameMajor::WM3,
+			"W3X100" => GameMajor::W3X,
+			"W3P100" => GameMajor::W3P,
 			_ => {
 				eprintln!("Unknwon game revision: {revision_name}");
-				GameVersion::Unknown
+				return default_gameversion();
 			}
+		};
+
+		let Some(next) = parts.next() else {
+			eprintln!("Unknwon game revision: {revision_name}");
+			return default_gameversion();
+		};
+		let region = match next {
+			"1" => GameRegion::JP,
+			"2" => GameRegion::EN2,
+			"3" => GameRegion::EN3,
+			"4" => GameRegion::EN4,
+			_ => {
+				eprintln!("Unknwon game revision: {revision_name}");
+				return default_gameversion();
+			}
+		};
+
+		let Some(_) = parts.next() else {
+			eprintln!("Unknwon game revision: {revision_name}");
+			return default_gameversion();
+		};
+		let Some(_) = parts.next() else {
+			eprintln!("Unknwon game revision: {revision_name}");
+			return default_gameversion();
+		};
+
+		let Some(next) = parts.next() else {
+			eprintln!("Unknwon game revision: {revision_name}");
+			return default_gameversion();
+		};
+
+		let Some(minor) = next.chars().next() else {
+			eprintln!("Unknwon game revision: {revision_name}");
+			return default_gameversion();
+		};
+
+		let minor = match minor {
+			'A' => GameMinor::A,
+			'B' => GameMinor::B,
+			_ => {
+				eprintln!("Unknwon game revision: {revision_name}");
+				return default_gameversion();
+			}
+		};
+
+		let Ok(revision) = next.chars().skip(1).take(2).collect::<String>().parse() else {
+			eprintln!("Unknwon game revision: {revision_name}");
+			return default_gameversion();
+		};
+
+		GameVersion {
+			major,
+			minor,
+			region,
+			revision,
 		}
 	}
 }
 
 #[repr(u32)]
-#[derive(Clone, Copy)]
-#[allow(non_camel_case_types)]
-pub enum GameVersion {
-	Unknown = 0,
-	WM3_JP_A70 = 1 << 0,
-	WM3_US_A70 = 1 << 1,
-	WM3_CN_A70 = 1 << 2,
-	W3X_JP_A20 = 1 << 3,
-	W3X_US_A20 = 1 << 4,
-	W3X_CN_A20 = 1 << 5,
-	W3P_JP_A16 = 1 << 6,
-	W3P_US_A16 = 1 << 7,
-	W3P_CN_A16 = 1 << 8,
-	W3P_JP_B02 = 1 << 9,
-	W3P_US_B02 = 1 << 10,
-	W3P_CN_B02 = 1 << 11,
+#[derive(Clone, Copy, PartialEq)]
+pub enum GameMajor {
+	WM3 = 0,
+	W3X = 1,
+	W3P = 2,
+	Unknown,
 }
 
-impl GameVersion {
-	fn is_wm3(&self) -> bool {
-		match self {
-			Self::WM3_JP_A70 | Self::WM3_US_A70 | Self::WM3_CN_A70 => true,
-			_ => false,
-		}
-	}
+#[repr(u32)]
+#[derive(Clone, Copy, PartialEq)]
+pub enum GameMinor {
+	A = 0,
+	B = 1,
+	Unknown,
+}
 
-	fn is_w3x(&self) -> bool {
-		match self {
-			Self::W3X_JP_A20 | Self::W3X_US_A20 | Self::W3X_CN_A20 => true,
-			_ => false,
-		}
-	}
+#[repr(u32)]
+#[derive(Clone, Copy, PartialEq)]
+pub enum GameRegion {
+	JP = 1,
+	EN2 = 2,
+	EN3 = 3,
+	EN4 = 4,
+	Unkown,
+}
 
-	fn is_w3p(&self) -> bool {
-		match self {
-			Self::W3P_JP_A16
-			| Self::W3P_US_A16
-			| Self::W3P_CN_A16
-			| Self::W3P_JP_B02
-			| Self::W3P_US_B02
-			| Self::W3P_CN_B02 => true,
-			_ => false,
-		}
+#[repr(C)]
+#[derive(Clone, Copy, PartialEq)]
+pub struct GameVersion {
+	major: GameMajor,
+	minor: GameMinor,
+	region: GameRegion,
+	revision: u32,
+}
+
+const fn default_gameversion() -> GameVersion {
+	GameVersion {
+		major: GameMajor::Unknown,
+		minor: GameMinor::Unknown,
+		region: GameRegion::Unkown,
+		revision: 0,
 	}
 }
 
