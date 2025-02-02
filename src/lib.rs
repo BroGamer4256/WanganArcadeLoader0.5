@@ -34,7 +34,7 @@ pub struct Config {
 	width: u32,
 	height: u32,
 
-	file_redirect: Vec<FileRedirect>,
+	file_redirect: Option<Vec<FileRedirect>>,
 }
 
 // Why cant this be a trait impl? Thanks rust
@@ -50,7 +50,7 @@ const fn default_config() -> Config {
 		deadzone: 0.01,
 		width: 640,
 		height: 480,
-		file_redirect: vec![],
+		file_redirect: None,
 	}
 }
 
@@ -146,9 +146,14 @@ unsafe extern "C" fn open(filename: *const c_char, flags: u32) -> *const () {
 	let filename = CStr::from_ptr(filename).to_str().unwrap();
 	let redirect = &CONFIG
 		.file_redirect
-		.iter()
-		.filter(|redirect| redirect.from == filename)
-		.next();
+		.as_ref()
+		.map(|redirects| {
+			redirects
+				.iter()
+				.filter(|redirect| redirect.from == filename)
+				.next()
+		})
+		.flatten();
 
 	let filename = if let Some(redirect) = redirect {
 		CString::new(redirect.to.clone()).unwrap()
@@ -370,7 +375,7 @@ impl Into<GameVersion> for &RomInfo {
 
 		let mut parts = revision_name.split('-');
 		let Some(next) = parts.next() else {
-			eprintln!("Unknwon game revision: {revision_name}");
+			eprintln!("Unknown game revision: {revision_name}");
 			return default_gameversion();
 		};
 		let major = match next {
@@ -378,13 +383,13 @@ impl Into<GameVersion> for &RomInfo {
 			"W3X100" => GameMajor::W3X,
 			"W3P100" => GameMajor::W3P,
 			_ => {
-				eprintln!("Unknwon game revision: {revision_name}");
+				eprintln!("Unknown game revision: {revision_name}");
 				return default_gameversion();
 			}
 		};
 
 		let Some(next) = parts.next() else {
-			eprintln!("Unknwon game revision: {revision_name}");
+			eprintln!("Unknown game revision: {revision_name}");
 			return default_gameversion();
 		};
 		let region = match next {
@@ -393,27 +398,27 @@ impl Into<GameVersion> for &RomInfo {
 			"3" => GameRegion::EN3,
 			"4" => GameRegion::EN4,
 			_ => {
-				eprintln!("Unknwon game revision: {revision_name}");
+				eprintln!("Unknown game revision: {revision_name}");
 				return default_gameversion();
 			}
 		};
 
 		let Some(_) = parts.next() else {
-			eprintln!("Unknwon game revision: {revision_name}");
+			eprintln!("Unknown game revision: {revision_name}");
 			return default_gameversion();
 		};
 		let Some(_) = parts.next() else {
-			eprintln!("Unknwon game revision: {revision_name}");
+			eprintln!("Unknown game revision: {revision_name}");
 			return default_gameversion();
 		};
 
 		let Some(next) = parts.next() else {
-			eprintln!("Unknwon game revision: {revision_name}");
+			eprintln!("Unknown game revision: {revision_name}");
 			return default_gameversion();
 		};
 
 		let Some(minor) = next.chars().next() else {
-			eprintln!("Unknwon game revision: {revision_name}");
+			eprintln!("Unknown game revision: {revision_name}");
 			return default_gameversion();
 		};
 
@@ -421,13 +426,13 @@ impl Into<GameVersion> for &RomInfo {
 			'A' => GameMinor::A,
 			'B' => GameMinor::B,
 			_ => {
-				eprintln!("Unknwon game revision: {revision_name}");
+				eprintln!("Unknown game revision: {revision_name}");
 				return default_gameversion();
 			}
 		};
 
 		let Ok(revision) = next.chars().skip(1).take(2).collect::<String>().parse() else {
-			eprintln!("Unknwon game revision: {revision_name}");
+			eprintln!("Unknown game revision: {revision_name}");
 			return default_gameversion();
 		};
 
@@ -614,7 +619,7 @@ unsafe fn init() {
 			let error = CStr::from_ptr(error).to_string_lossy().to_string();
 			panic!("init does not exist in {plugin_name}: {error}");
 		}
-		let init: fn(GameVersion) = transmute(init);
-		init(version);
+		let init: fn(*const GameVersion) = transmute(init);
+		init(&version);
 	}
 }
